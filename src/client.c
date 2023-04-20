@@ -58,10 +58,17 @@ bool connect_to_server(const char *client_name)
 void communicate(const char *client_name)
 {
 
-    char req_or_res_sem_fname[MAX_BUFFER_SIZE];
-    sprintf(req_or_res_sem_fname, "%s_sem", client_name);
-    sem_unlink(req_or_res_sem_fname);
-    sem_t *req_or_res_sem = sem_open(req_or_res_sem_fname, O_CREAT, 0, 0);
+    // Setup READ semaphore for the buffer
+    char sem_comm_channel_read_fname[MAX_BUFFER_SIZE];
+    sprintf(sem_comm_channel_read_fname, "%s_read_sem", client_name);
+    sem_unlink(sem_comm_channel_read_fname);
+    sem_t *sem_comm_channel_read = sem_open(sem_comm_channel_read_fname, O_CREAT, 0644, 0);
+
+    // Setup write semaphore for the buffer
+    char sem_comm_channel_write_fname[MAX_BUFFER_SIZE];
+    sprintf(sem_comm_channel_write_fname, "%s_write_sem", client_name);
+    sem_unlink(sem_comm_channel_write_fname);
+    sem_t *sem_comm_channel_write = sem_open(sem_comm_channel_write_fname, O_CREAT, 0644, 1);
 
     RequestOrResponse *req_or_res = (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
     if (req_or_res == NULL)
@@ -87,8 +94,9 @@ void communicate(const char *client_name)
     int current_choice = 0;
     while (true)
     {
-        // Busy waiting:
-        // While semaphore value is not 1, keep waiting.
+        // Entry Condition:
+        // read_sem = 0
+        // write_sem = 1
         scanf("%d", &current_choice);
 
         if (current_choice == 0) // ARITHMETIC
@@ -96,10 +104,12 @@ void communicate(const char *client_name)
             printf("Enter two numbers: ");
             scanf("%d %d %c", &n1, &n2, &op);
 
+            sem_wait(sem_comm_channel_write);
             req_or_res->req.request_type = ARITHMETIC;
             req_or_res->req.n1 = n1;
             req_or_res->req.n2 = n2;
             req_or_res->req.op = op;
+            sem_post(sem_comm_channel_read);
         }
 
         else if (current_choice == 1) // EVEN_OR_ODD
@@ -107,8 +117,10 @@ void communicate(const char *client_name)
             printf("Enter number to check evenness: ");
             scanf("%d", &n1);
 
+            sem_wait(sem_comm_channel_write);
             req_or_res->req.request_type = EVEN_OR_ODD;
             req_or_res->req.n1 = n1;
+            sem_post(sem_comm_channel_read);
         }
 
         else if (current_choice == 2) // IS_PRIME
@@ -116,8 +128,10 @@ void communicate(const char *client_name)
             printf("Enter number to check primality: ");
             scanf("%d", &n1);
 
+            sem_wait(sem_comm_channel_write);
             req_or_res->req.request_type = IS_PRIME;
             req_or_res->req.n1 = n1;
+            sem_post(sem_comm_channel_read);
         }
 
         else if (current_choice == 3) // IS_NEGATIVE
@@ -125,27 +139,43 @@ void communicate(const char *client_name)
             printf("Enter number to check sign: ");
             scanf("%d", &n1);
 
+            sem_wait(sem_comm_channel_write);
             req_or_res->req.request_type = IS_NEGATIVE;
             req_or_res->req.n1 = n1;
+            sem_post(sem_comm_channel_read);
         }
 
         else if (current_choice == 4) // UNREGISTER
         {
+            sem_wait(sem_comm_channel_write);
             req_or_res->req.request_type = UNREGISTER;
+            sem_post(sem_comm_channel_read);
 
             break;
         }
 
         else if (current_choice == 5) // DON'T DO ANYTHING AND EXIT
         {
+            // TODO: Check if these are required.
+            sem_wait(sem_comm_channel_write);
+            sem_post(sem_comm_channel_read);
             break;
         }
-    
-        // Set semaphore value to 2
-        // Wait till semaphore value is 3
-        //      Print Result
-        // Set semaphore value to 1
-    
+
+        // Exit condition
+        // read_sem = 1
+        // write_sem = 0
+
+        // Waiting for server...
+
+        // Expected: read_sem = 0, write_sem = 1
+        sem_wait(sem_comm_channel_write);
+        printf("Received result: %d", req_or_res->res.response_code);
+        sem_post(sem_comm_channel_write);
+
+        // Exit condition:
+        // read_sem = 0
+        // write_sem = 1
     }
 }
 
@@ -168,7 +198,7 @@ int main(int argc, char **argv)
     }
 
     connect_to_server(client_name);
-    // communicate(client_name);
+    communicate(client_name);
 
     return 0;
 }

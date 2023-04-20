@@ -12,9 +12,9 @@ typedef enum RequestType
 
 typedef enum ResponseCode
 {
-    SUCCESS = 200,
-    UNSUPPORTED = 405,
-    UNKNOWN_FAILURE = 500
+    RESPONSE_SUCCESS = 200,
+    RESPONSE_UNSUPPORTED = 405,
+    RESPONSE_UNKNOWN_FAILURE = 500
 } ResponseCode;
 
 typedef struct Request

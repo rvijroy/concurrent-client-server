@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 #include "shared_memory.h"
 #include "file_utils.h"
@@ -19,6 +20,40 @@
 
 #define TEMP_CLIENT_SIZE (1024)
 
+typedef struct WorkerArgs
+{
+    char *client_name;
+    sem_t *sem_comm_channel_read;
+    sem_t *sem_comm_channel_write;
+    void *shm_comm_channel;
+} WorkerArgs;
+
+void *worker_function(void *args)
+{
+    char *client_name = ((WorkerArgs *)args)->client_name;
+    sem_t *sem_comm_channel_read = ((WorkerArgs *)args)->sem_comm_channel_read;
+    sem_t *sem_comm_channel_write = ((WorkerArgs *)args)->sem_comm_channel_write;
+    RequestOrResponse *req_or_res = (RequestOrResponse *)((WorkerArgs *)args)->shm_comm_channel;
+
+    while (true)
+    {
+
+        sem_wait(sem_comm_channel_read);
+        printf("%d", req_or_res->req.request_type);
+        if (req_or_res->req.request_type == UNREGISTER)
+        {
+            // TODO: Cleanup if deregister
+            break;
+        }
+
+        req_or_res->res.response_code = RESPONSE_SUCCESS;
+        sem_post(sem_comm_channel_write);
+    }
+
+    free(args);
+    args = NULL;
+}
+
 int register_client(char *client_name)
 {
     int client_name_fd = create_file_if_does_not_exist(client_name);
@@ -33,18 +68,36 @@ int register_client(char *client_name)
         return -1;
     }
 
-    // TODO: Setup Semaphor for the buffer as well.
+    // Setup READ semaphore for the buffer
+    char sem_comm_channel_read_fname[MAX_BUFFER_SIZE];
+    sprintf(sem_comm_channel_read_fname, "%s_read_sem", client_name);
+    sem_unlink(sem_comm_channel_read_fname);
+    sem_t *sem_comm_channel_read = sem_open(sem_comm_channel_read_fname, O_CREAT, 0644, 0);
+
+    // Setup write semaphore for the buffer
+    char sem_comm_channel_write_fname[MAX_BUFFER_SIZE];
+    sprintf(sem_comm_channel_write_fname, "%s_write_sem", client_name);
+    sem_unlink(sem_comm_channel_write_fname);
+    sem_t *sem_comm_channel_write = sem_open(sem_comm_channel_write_fname, O_CREAT, 0644, 1);
 
     // Setup New SHM, etc.
-    void *shm_client_comm_channel = attach_memory_block(client_name, sizeof(RequestOrResponse));
-    if (shm_client_comm_channel == NULL)
+    void *shm_comm_channel = attach_memory_block(client_name, sizeof(RequestOrResponse));
+    if (shm_comm_channel == NULL)
     {
         fprintf(stderr, "ERROR: Could not get block: %s\n", client_name);
         return -1;
     }
 
-    clear_memory_block(shm_client_comm_channel, sizeof(RequestOrResponse));
+    clear_memory_block(shm_comm_channel, sizeof(RequestOrResponse));
 
+    WorkerArgs *args = malloc(sizeof(WorkerArgs));
+    memcpy(args->client_name, client_name, MAX_CLIENT_NAME_LEN);
+    args->sem_comm_channel_read = sem_comm_channel_read;
+    args->sem_comm_channel_write = sem_comm_channel_write;
+    args->shm_comm_channel = shm_comm_channel;
+
+    pthread_t client_tid;
+    pthread_create(&client_tid, NULL, worker_function, args);
 
     // TODO: Create a worker thread for this client.
     return ftok(client_name, 0);
@@ -89,7 +142,7 @@ int main(int argc, char **argv)
         }
 
         clear_memory_block(shm_connect_channel, CONNECT_CHANNEL_SIZE);
-        
+
         sem_post(conn_channel_sem);
         sleep(1);
     }
