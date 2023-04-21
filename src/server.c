@@ -9,16 +9,6 @@
 #include "common_structs.h"
 #include "worker.h"
 
-#define CONNECT_CHANNEL_FNAME "srv_conn_channel"
-#define CONNECT_CHANNEL_SIZE (1024)
-
-#define MAX_CLIENT_NAME_LEN (1024)
-#define MAX_BUFFER_SIZE (1024)
-
-#define UNREGISTER_STRING "unregister"
-
-#define TEMP_CLIENT_SIZE (1024)
-
 int register_client(char *client_name)
 {
     int client_name_fd = create_file_if_does_not_exist(client_name);
@@ -37,20 +27,14 @@ int register_client(char *client_name)
     WorkerArgs *args = malloc(sizeof(WorkerArgs));
     memcpy(args->client_name, client_name, MAX_CLIENT_NAME_LEN);
 
-    // ! Is this the correct way of doing things?
-    args->shm_comm_channel = attach_memory_block(client_name, sizeof(RequestOrResponse));
+    args->shm_comm_channel = create_req_or_res(client_name);
     if (args->shm_comm_channel == NULL)
-    {
-        fprintf(stderr, "ERROR: Could not get block: %s\n", client_name);
         return -1;
-    }
-
-    clear_memory_block(args->shm_comm_channel, sizeof(RequestOrResponse));
 
     pthread_t client_tid;
     pthread_attr_t client_tattr;
 
-    // Detach the thread - A detached thread can't be joined. 
+    // Detach the thread - A detached thread can't be joined.
     pthread_attr_setdetachstate(&client_tattr, PTHREAD_CREATE_DETACHED);
     pthread_create(&client_tid, &client_tattr, worker_function, args);
 

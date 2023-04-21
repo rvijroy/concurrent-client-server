@@ -111,6 +111,7 @@ void *worker_function(void *args)
 
     while (true)
     {
+        wait_until_stage(req_or_res, 1);
         printf("%d", req_or_res->req.request_type);
         if (req_or_res->req.request_type == ARITHMETIC)
         {
@@ -137,8 +138,10 @@ void *worker_function(void *args)
             // TODO: Cleanup if deregister
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
             req_or_res->res.response_code = RESPONSE_SUCCESS;
+
             break;
         }
+        next_stage(req_or_res);
         sleep(1);
     }
 

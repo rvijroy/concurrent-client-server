@@ -7,16 +7,6 @@
 #include "common_structs.h"
 #include "file_utils.h"
 
-#define CONNECT_CHANNEL_FNAME "srv_conn_channel"
-#define CONNECT_CHANNEL_SIZE (1024)
-
-#define MAX_CLIENT_NAME_LEN (1024)
-#define MAX_BUFFER_SIZE (1024)
-
-#define UNREGISTER_STRING "unregister"
-
-#define TEMP_CLIENT_SIZE (1024)
-
 bool connect_to_server(const char *client_name)
 {
 
@@ -35,14 +25,11 @@ bool connect_to_server(const char *client_name)
     return 0;
 }
 
-void communicate(const char *client_name)
+int communicate(const char *client_name)
 {
-    RequestOrResponse *req_or_res = (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
+    RequestOrResponse *req_or_res = get_req_or_res(client_name);
     if (req_or_res == NULL)
-    {
-        fprintf(stderr, "ERROR: Could not get block: %s\n", client_name);
-        return;
-    }
+        return -1;
 
     int n1, n2;
     char op;
@@ -53,10 +40,11 @@ void communicate(const char *client_name)
     int current_choice = 0;
     while (true)
     {
+        wait_until_stage(req_or_res, 0);
         // scanf("%d", &current_choice);
-        current_choice = 4;
+        current_choice = EVEN_OR_ODD;
 
-        if (current_choice == 0) // ARITHMETIC
+        if (current_choice == ARITHMETIC) // ARITHMETIC
         {
             printf("Enter two numbers: ");
             scanf("%d %d %c", &n1, &n2, &op);
@@ -65,47 +53,55 @@ void communicate(const char *client_name)
             req_or_res->req.n1 = n1;
             req_or_res->req.n2 = n2;
             req_or_res->req.op = op;
+            next_stage(req_or_res);
         }
 
-        else if (current_choice == 1) // EVEN_OR_ODD
+        else if (current_choice == EVEN_OR_ODD) // EVEN_OR_ODD
         {
             printf("Enter number to check evenness: ");
-            scanf("%d", &n1);
+            // scanf("%d", &n1);
+            n1 = 4;
 
             req_or_res->req.request_type = EVEN_OR_ODD;
             req_or_res->req.n1 = n1;
+            next_stage(req_or_res);
         }
 
-        else if (current_choice == 2) // IS_PRIME
+        else if (current_choice == IS_PRIME) // IS_PRIME
         {
             printf("Enter number to check primality: ");
             scanf("%d", &n1);
 
             req_or_res->req.request_type = IS_PRIME;
             req_or_res->req.n1 = n1;
+            next_stage(req_or_res);
         }
 
-        else if (current_choice == 3) // IS_NEGATIVE
+        else if (current_choice == IS_NEGATIVE) // IS_NEGATIVE
         {
             printf("Enter number to check sign: ");
             scanf("%d", &n1);
 
             req_or_res->req.request_type = IS_NEGATIVE;
             req_or_res->req.n1 = n1;
+            next_stage(req_or_res);
         }
 
-        else if (current_choice == 4) // UNREGISTER
+        else if (current_choice == UNREGISTER) // UNREGISTER
         {
             req_or_res->req.request_type = UNREGISTER;
+            next_stage(req_or_res);
             break;
         }
 
         else if (current_choice == 5) // DON'T DO ANYTHING AND EXIT
         {
             // TODO: Check if synch is required here.
+            next_stage(req_or_res);
             break;
         }
 
+        wait_until_stage(req_or_res, 2);
         if (req_or_res->res.response_code == RESPONSE_SUCCESS)
             printf("Result: %\n", req_or_res->res.result);
 
@@ -117,7 +113,10 @@ void communicate(const char *client_name)
 
         else
             fprintf(stderr, "Error: Unsupported response. Something is wrong with the server.\n");
+        next_stage(req_or_res);
     }
+
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -128,7 +127,7 @@ int main(int argc, char **argv)
     //     exit(EXIT_FAILURE);
     // }
 
-    char client_name[MAX_CLIENT_NAME_LEN] = "xyz420";
+    char client_name[MAX_CLIENT_NAME_LEN] = "xyz422";
     // memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
 
     // If the connection file does not exist, then the server is probably not running.
