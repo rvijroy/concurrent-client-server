@@ -97,7 +97,6 @@ void communicate(const char *client_name)
         else if (current_choice == 4) // UNREGISTER
         {
             req_or_res->req.request_type = UNREGISTER;
-
             break;
         }
 
@@ -106,6 +105,18 @@ void communicate(const char *client_name)
             // TODO: Check if synch is required here.
             break;
         }
+
+        if (req_or_res->res.response_code == RESPONSE_SUCCESS)
+            printf("Result: %\n", req_or_res->res.result);
+
+        else if (req_or_res->res.response_code == RESPONSE_UNSUPPORTED)
+            fprintf(stderr, "Error: Unsupported request\n");
+
+        else if (req_or_res->res.response_code == RESPONSE_UNKNOWN_FAILURE)
+            fprintf(stderr, "Error: Unknown failure\n");
+
+        else
+            fprintf(stderr, "Error: Unsupported response. Something is wrong with the server.\n");
     }
 }
 

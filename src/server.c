@@ -48,7 +48,11 @@ int register_client(char *client_name)
     clear_memory_block(args->shm_comm_channel, sizeof(RequestOrResponse));
 
     pthread_t client_tid;
-    pthread_create(&client_tid, NULL, worker_function, args);
+    pthread_attr_t client_tattr;
+
+    // Detach the thread - A detached thread can't be joined. 
+    pthread_attr_setdetachstate(&client_tattr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&client_tid, &client_tattr, worker_function, args);
 
     // TODO: Create a worker thread for this client.
     return ftok(client_name, 0);

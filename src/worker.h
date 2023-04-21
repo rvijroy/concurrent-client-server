@@ -71,12 +71,30 @@ Response handle_is_prime(Request req)
 {
     Response res;
     if (req.n1 < 0)
-        res.response_code = RESPONSE_UNKNOWN_FAILURE;
-    else
     {
-        res.result = 1;
-        res.response_code = RESPONSE_SUCCESS;
+        res.response_code = RESPONSE_UNKNOWN_FAILURE;
+        return res;
     }
+
+    // 0 and 1 are not prime numbers.
+    if (req.n1 == 0 || req.n1 == 1)
+    {
+        res.result = 0;
+        res.response_code = RESPONSE_SUCCESS;
+        return res;
+    }
+
+    res.result = 1;
+    for (int i = 2; i * i <= req.n1; ++i)
+    {
+        if (req.n1 % i == 0)
+        {
+            res.result = 0;
+            break;
+        }
+    }
+
+    res.response_code = RESPONSE_SUCCESS;
     return res;
 }
 
@@ -121,6 +139,7 @@ void *worker_function(void *args)
             req_or_res->res.response_code = RESPONSE_SUCCESS;
             break;
         }
+        sleep(1);
     }
 
     free(args);
