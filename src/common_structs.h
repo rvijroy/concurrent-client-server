@@ -13,7 +13,7 @@ typedef enum RequestType
 typedef enum ResponseCode
 {
     RESPONSE_SUCCESS = 200,
-    RESPONSE_UNSUPPORTED = 405,
+    RESPONSE_UNSUPPORTED = 422,
     RESPONSE_UNKNOWN_FAILURE = 500
 } ResponseCode;
 

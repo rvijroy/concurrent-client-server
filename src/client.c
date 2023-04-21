@@ -29,6 +29,7 @@ bool connect_to_server(const char *client_name)
 
     // Append the new client_name to the connect channel list
     printf("Sending request to create client: %s\n", client_name);
+    // TODO: Account for connect channel being empty
     sprintf(shm_connect_channel, "%s %s", shm_connect_channel, client_name);
 
     return 0;
@@ -52,10 +53,8 @@ void communicate(const char *client_name)
     int current_choice = 0;
     while (true)
     {
-        // Entry Condition:
-        // read_sem = 0
-        // write_sem = 1
-        scanf("%d", &current_choice);
+        // scanf("%d", &current_choice);
+        current_choice = 4;
 
         if (current_choice == 0) // ARITHMETIC
         {
@@ -112,14 +111,14 @@ void communicate(const char *client_name)
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
-    {
-        printf("Usage: ./client <unique_name_for_client>\n");
-        exit(EXIT_FAILURE);
-    }
+    // if (argc < 2)
+    // {
+    //     printf("Usage: ./client <unique_name_for_client>\n");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    char client_name[MAX_CLIENT_NAME_LEN];
-    memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
+    char client_name[MAX_CLIENT_NAME_LEN] = "xyz420";
+    // memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
 
     // If the connection file does not exist, then the server is probably not running.
     if (!does_file_exist(CONNECT_CHANNEL_FNAME))

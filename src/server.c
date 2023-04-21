@@ -7,6 +7,7 @@
 #include "shared_memory.h"
 #include "file_utils.h"
 #include "common_structs.h"
+#include "worker.h"
 
 #define CONNECT_CHANNEL_FNAME "srv_conn_channel"
 #define CONNECT_CHANNEL_SIZE (1024)
@@ -17,33 +18,6 @@
 #define UNREGISTER_STRING "unregister"
 
 #define TEMP_CLIENT_SIZE (1024)
-
-typedef struct WorkerArgs
-{
-    char *client_name;
-    void *shm_comm_channel;
-} WorkerArgs;
-
-void *worker_function(void *args)
-{
-    char *client_name = ((WorkerArgs *)args)->client_name;
-    RequestOrResponse *req_or_res = (RequestOrResponse *)((WorkerArgs *)args)->shm_comm_channel;
-
-    while (true)
-    {
-        printf("%d", req_or_res->req.request_type);
-        if (req_or_res->req.request_type == UNREGISTER)
-        {
-            // TODO: Cleanup if deregister
-            break;
-        }
-
-        req_or_res->res.response_code = RESPONSE_SUCCESS;
-    }
-
-    free(args);
-    args = NULL;
-}
 
 int register_client(char *client_name)
 {
@@ -60,18 +34,18 @@ int register_client(char *client_name)
     }
 
     // Setup New SHM, etc.
-    void *shm_comm_channel = attach_memory_block(client_name, sizeof(RequestOrResponse));
-    if (shm_comm_channel == NULL)
+    WorkerArgs *args = malloc(sizeof(WorkerArgs));
+    memcpy(args->client_name, client_name, MAX_CLIENT_NAME_LEN);
+
+    // ! Is this the correct way of doing things?
+    args->shm_comm_channel = attach_memory_block(client_name, sizeof(RequestOrResponse));
+    if (args->shm_comm_channel == NULL)
     {
         fprintf(stderr, "ERROR: Could not get block: %s\n", client_name);
         return -1;
     }
 
-    clear_memory_block(shm_comm_channel, sizeof(RequestOrResponse));
-
-    WorkerArgs *args = malloc(sizeof(WorkerArgs));
-    memcpy(args->client_name, client_name, MAX_CLIENT_NAME_LEN);
-    args->shm_comm_channel = shm_comm_channel;
+    clear_memory_block(args->shm_comm_channel, sizeof(RequestOrResponse));
 
     pthread_t client_tid;
     pthread_create(&client_tid, NULL, worker_function, args);
