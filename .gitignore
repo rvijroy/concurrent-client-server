@@ -1,1 +1,6 @@
 bin/
+*.dSYM/
+
+.vscode/
+client
+server
