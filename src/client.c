@@ -21,12 +21,12 @@
 
 bool connect_to_server(const char *client_name)
 {
-    create_file_if_does_not_exist(CONNECT_CHANNEL_SEM_FNAME);
-    sem_unlink(CONNECT_CHANNEL_SEM_FNAME);
+    // create_file_if_does_not_exist(CONNECT_CHANNEL_SEM_FNAME);
 
     // Using mode 0 when creating semaphore, so that it only works if the semaphore already exists.
     // verify that this does actually work.
-    sem_t *conn_channel_sem = sem_open(CONNECT_CHANNEL_SEM_FNAME, O_CREAT, 0, 1);
+    // sem_t *conn_channel_sem = sem_open(CONNECT_CHANNEL_SEM_FNAME, O_CREAT, 0, 1);
+    sem_t *conn_channel_sem = sem_open(CONNECT_CHANNEL_SEM_FNAME, 0);
     if (conn_channel_sem == SEM_FAILED)
     {
         if (errno == ENOENT)
@@ -51,7 +51,7 @@ bool connect_to_server(const char *client_name)
     sprintf(shm_connect_channel, "%s %s", shm_connect_channel, client_name);
     sem_post(conn_channel_sem);
 
-    sem_close(conn_channel_sem);
+    sem_close(conn_channel_sem); // ! Is this fine?
     return 0;
 }
 
@@ -61,15 +61,19 @@ void communicate(const char *client_name)
     // Setup READ semaphore for the buffer
     char sem_comm_channel_read_fname[MAX_BUFFER_SIZE];
     sprintf(sem_comm_channel_read_fname, "%s_read_sem", client_name);
-    sem_unlink(sem_comm_channel_read_fname);
-    sem_t *sem_comm_channel_read = sem_open(sem_comm_channel_read_fname, O_CREAT, 0644, 0);
+    sem_t *sem_comm_channel_read = sem_open(sem_comm_channel_read_fname, 0);
+    // sem_t *sem_comm_channel_read = sem_open(sem_comm_channel_read_fname, O_CREAT, 0644, 0);
 
-    // Setup write semaphore for the buffer
+    // Setup WRITE semaphore for the buffer
     char sem_comm_channel_write_fname[MAX_BUFFER_SIZE];
     sprintf(sem_comm_channel_write_fname, "%s_write_sem", client_name);
-    sem_unlink(sem_comm_channel_write_fname);
-    sem_t *sem_comm_channel_write = sem_open(sem_comm_channel_write_fname, O_CREAT, 0644, 1);
+    sem_t *sem_comm_channel_write = sem_open(sem_comm_channel_write_fname, 0);
+    // sem_t *sem_comm_channel_write = sem_open(sem_comm_channel_write_fname, O_CREAT, 0644, 1);
 
+    // ? Need some kind of synch setup here so that the attach mem block is not called
+    // ? Before the mem block has been created. 
+    // ? Alternatively, let it be created here or there and synch later?
+    // ? But what about the semaphores themselves. What if they have not been created. 
     RequestOrResponse *req_or_res = (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
     if (req_or_res == NULL)
     {

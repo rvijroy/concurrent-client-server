@@ -7,6 +7,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/types.h>
+#include <errno.h>
 #include <sys/stat.h>
 
 #define IPC_RESULT_ERROR (-1)
@@ -37,7 +38,25 @@ void *attach_memory_block(const char *filename, size_t size)
     void *result;
 
     if (shared_block_id == IPC_RESULT_ERROR)
+    {
+
+        if (errno == EACCES)
+            printf("EACCESS\n");
+        if (errno == EEXIST)
+            printf("EEXIST\n");
+        if (errno == EINVAL)
+            printf("EINVAL\n");
+        if (errno == ENOENT)
+            printf("ENOENT\n");
+        if (errno == ENOMEM)
+            printf("ENOMEM\n");
+        if (errno == ENOSPC)
+            printf("ENOSPC\n");
+        else
+            printf("wtf\n");
+
         return NULL;
+    }
 
     // map the shared block into this process's memory
     // and return a pointer to it
