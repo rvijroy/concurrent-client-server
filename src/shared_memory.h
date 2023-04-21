@@ -42,15 +42,15 @@ void *attach_memory_block(const char *filename, size_t size)
 
         if (errno == EACCES)
             printf("EACCESS\n");
-        if (errno == EEXIST)
+        else if (errno == EEXIST)
             printf("EEXIST\n");
-        if (errno == EINVAL)
+        else if (errno == EINVAL)
             printf("EINVAL\n");
-        if (errno == ENOENT)
+        else if (errno == ENOENT)
             printf("ENOENT\n");
-        if (errno == ENOMEM)
+        else if (errno == ENOMEM)
             printf("ENOMEM\n");
-        if (errno == ENOSPC)
+        else if (errno == ENOSPC)
             printf("ENOSPC\n");
         else
             printf("wtf\n");

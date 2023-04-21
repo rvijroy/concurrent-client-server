@@ -111,6 +111,7 @@ void *worker_function(void *args)
 
     while (true)
     {
+        printf("Waiting to reach stage 1...\n");
         wait_until_stage(req_or_res, 1);
         printf("%d", req_or_res->req.request_type);
         if (req_or_res->req.request_type == ARITHMETIC)

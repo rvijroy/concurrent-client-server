@@ -76,13 +76,13 @@ RequestOrResponse *create_req_or_res(const char *client_name)
     return req_or_res;
 }
 
-void wait_until_stage(RequestOrResponse *req_or_res, int waiting_for_stage)
+void wait_until_stage(RequestOrResponse *req_or_res, int stage)
 {
     bool reached_stage = false;
     while (!reached_stage)
     {
         pthread_mutex_lock(&req_or_res->lock);
-        reached_stage = (req_or_res->stage == waiting_for_stage);
+        reached_stage = (req_or_res->stage == stage);
         pthread_mutex_unlock(&req_or_res->lock);
     }
 }
@@ -91,10 +91,19 @@ void next_stage(RequestOrResponse *req_or_res)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = (req_or_res->stage + 1) % 3;
+    printf("Set stage to: %d", req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 
-RequestOrResponse *get_req_or_res(char *client_name)
+void set_stage(RequestOrResponse *req_or_res, int stage)
+{
+    pthread_mutex_lock(&req_or_res->lock);
+    req_or_res->stage = stage;
+    printf("Set stage to: %d", req_or_res->stage);
+    pthread_mutex_unlock(&req_or_res->lock);
+}
+
+RequestOrResponse *get_req_or_res(const char *client_name)
 {
     create_file_if_does_not_exist(client_name);
     RequestOrResponse *req_or_res =

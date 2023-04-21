@@ -6,26 +6,24 @@
 #include "shared_memory.h"
 #include "common_structs.h"
 #include "file_utils.h"
+#include "conn_chanel.h"
 
-bool connect_to_server(const char *client_name)
+int connect_to_server(const char *client_name)
 {
-
-    char *shm_connect_channel = (char *)attach_memory_block(CONNECT_CHANNEL_FNAME, CONNECT_CHANNEL_SIZE);
-    if (shm_connect_channel == NULL)
+    queue_t *conn_q = get_queue();
+    if (conn_q == NULL)
     {
-        fprintf(stderr, "ERROR: Could not get block %s\n", CONNECT_CHANNEL_FNAME);
+        fprintf(stderr, "ERROR: Could not get connection queue.\n");
         exit(EXIT_FAILURE);
     }
 
-    // Append the new client_name to the connect channel list
-    printf("Sending request to create client: %s\n", client_name);
-    // TODO: Account for connect channel being empty
-    sprintf(shm_connect_channel, "%s %s", shm_connect_channel, client_name);
+    RequestOrResponse *req_or_res = post(conn_q, client_name);
+    wait_until_stage(req_or_res, 1);
 
-    return 0;
+    return req_or_res->res.key;
 }
 
-int communicate(const char *client_name)
+int communicate(const char *client_name, int key)
 {
     RequestOrResponse *req_or_res = get_req_or_res(client_name);
     if (req_or_res == NULL)
@@ -103,7 +101,7 @@ int communicate(const char *client_name)
 
         wait_until_stage(req_or_res, 2);
         if (req_or_res->res.response_code == RESPONSE_SUCCESS)
-            printf("Result: %\n", req_or_res->res.result);
+            printf("Result: %d\n", req_or_res->res.result);
 
         else if (req_or_res->res.response_code == RESPONSE_UNSUPPORTED)
             fprintf(stderr, "Error: Unsupported request\n");
@@ -127,7 +125,7 @@ int main(int argc, char **argv)
     //     exit(EXIT_FAILURE);
     // }
 
-    char client_name[MAX_CLIENT_NAME_LEN] = "xyz422";
+    char client_name[MAX_CLIENT_NAME_LEN] = "xyz420";
     // memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
 
     // If the connection file does not exist, then the server is probably not running.
@@ -137,8 +135,8 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    connect_to_server(client_name);
-    communicate(client_name);
+    int key = connect_to_server(client_name);
+    communicate(client_name, key);
 
     return 0;
 }
