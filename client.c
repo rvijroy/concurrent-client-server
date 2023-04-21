@@ -37,12 +37,14 @@ bool connect_to_server(const char *client_name)
         exit(EXIT_FAILURE);
     }
 
+    sem_wait(conn_channel_sem);
     char *shm_connect_channel = (char *)attach_memory_block(CONNECT_CHANNEL_FNAME, CONNECT_CHANNEL_SIZE);
     if (shm_connect_channel == NULL)
     {
-        fprintf(stderr, "ERROR: Could not get block %s\n", CONNECT_CHANNEL_FNAME);
+        fprintf(stderr, "ERROR: Could not get connect channel block %s\n", CONNECT_CHANNEL_FNAME);
         exit(EXIT_FAILURE);
     }
+    sem_post(conn_channel_sem);
 
     // Append the new client_name to the connect channel list
     // printf("Starting sem wait...\n");
@@ -60,14 +62,37 @@ void communicate(const char *client_name)
 
     char req_or_res_sem_fname[MAX_BUFFER_SIZE];
     sprintf(req_or_res_sem_fname, "%s_sem", client_name);
-    sem_unlink(req_or_res_sem_fname);
-    sem_t *req_or_res_sem = sem_open(req_or_res_sem_fname, O_CREAT, 0, 0);
 
-    RequestOrResponse *req_or_res = (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
+    create_file_if_does_not_exist(req_or_res_sem_fname);
+    sem_t *req_or_res_sem = sem_open(req_or_res_sem_fname, 0);
+    if (req_or_res_sem == SEM_FAILED)
+    {
+        fprintf(stderr, "Semaphore open failed due to unkown reasons.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // int sem_value = 0;
+    // while (!sem_value)
+    // {
+    //     sem_getvalue(req_or_res_sem, &sem_value);
+    //     printf("Sem value: %d\n", sem_value);
+    // }
+
+    // sem_wait(req_or_res_sem);
+    // It is assumed, that at the point the file with name client_name has already been created.
+    RequestOrResponse *req_or_res = attach_memory_block(client_name, sizeof(RequestOrResponse));
     if (req_or_res == NULL)
     {
-        fprintf(stderr, "ERROR: Could not get block: %s\n", client_name);
+        fprintf(stderr, "ERROR: Could not get comm channel block: %s\n", client_name);
         return;
+    }
+    sem_post(req_or_res_sem);
+
+    int sem_value = 0;
+    while (!sem_value)
+    {
+        sem_getvalue(req_or_res_sem, &sem_value);
+        printf("Sem value: %d\n", sem_value);
     }
 
     int n1, n2;
@@ -140,25 +165,24 @@ void communicate(const char *client_name)
         {
             break;
         }
-    
+
         // Set semaphore value to 2
         // Wait till semaphore value is 3
         //      Print Result
         // Set semaphore value to 1
-    
     }
 }
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
-    {
-        printf("Usage: ./client <unique_name_for_client>\n");
-        exit(EXIT_FAILURE);
-    }
+    // if (argc < 2)
+    // {
+    //     printf("Usage: ./client <unique_name_for_client>\n");
+    //     exit(EXIT_FAILURE);
+    // }
 
-    char client_name[MAX_CLIENT_NAME_LEN];
-    memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
+    char client_name[MAX_CLIENT_NAME_LEN] = "xyz_";
+    // memcpy(client_name, argv[1], MAX_CLIENT_NAME_LEN);
 
     // If the connection file does not exist, then the server is probably not running.
     if (!does_file_exist(CONNECT_CHANNEL_FNAME))
@@ -168,7 +192,8 @@ int main(int argc, char **argv)
     }
 
     connect_to_server(client_name);
-    // communicate(client_name);
+    printf("It worked!");
+    communicate(client_name);
 
     return 0;
 }
