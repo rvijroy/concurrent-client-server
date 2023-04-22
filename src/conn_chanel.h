@@ -12,7 +12,7 @@
 
 typedef struct node_t
 {
-    RequestOrResponse *req_or_res;
+    int req_or_res_block_id;
 } node_t;
 
 typedef struct queue_t
@@ -31,7 +31,7 @@ queue_t *create_queue()
 
     if (q == NULL)
     {
-        fprintf(stderr, "Error: Could not create shared memory block for queue.\n");
+        fprintf(stderr, "ERROR: Could not create shared memory block for queue.\n");
         return NULL;
     }
 
@@ -52,7 +52,7 @@ queue_t *get_queue()
     queue_t *q = (queue_t *)attach_memory_block(CONNECT_CHANNEL_FNAME, sizeof(queue_t));
     if (q == NULL)
     {
-        fprintf(stderr, "Error: Could not create shared memory block for queue.\n");
+        fprintf(stderr, "ERROR: Could not create shared memory block for queue.\n");
         return NULL;
     }
 
@@ -64,14 +64,21 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     pthread_mutex_lock(&q->lock);
     if (q->size == MAX_QUEUE_LEN)
     {
-        fprintf(stderr, "Error: Could not enqueue to connection queue. Connection queue is full.\n");
+        fprintf(stderr, "ERROR: Could not enqueue to connection queue. Connection queue is full.\n");
         pthread_mutex_unlock(&q->lock);
     }
 
     char shm_req_or_res_fname[MAX_CLIENT_NAME_LEN];
     sprintf(shm_req_or_res_fname, "queue_%d", q->tail);
+    create_file_if_does_not_exist(shm_req_or_res_fname);
 
-    RequestOrResponse *shm_req_or_res = (RequestOrResponse *)attach_memory_block(shm_req_or_res_fname, sizeof(RequestOrResponse));
+    int req_or_res_block_id = get_shared_block(shm_req_or_res_fname, sizeof(RequestOrResponse));
+    RequestOrResponse *shm_req_or_res = (RequestOrResponse *)attach_with_shared_block_id(req_or_res_block_id);
+    if (shm_req_or_res == NULL)
+    {
+        fprintf(stderr, "ERROR: Could not create shared memory block %s for the queue.\n", shm_req_or_res_fname);
+        return NULL;
+    }
 
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
@@ -79,11 +86,18 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     pthread_mutex_init(&shm_req_or_res->lock, &attr);
     pthread_mutexattr_destroy(&attr);
 
-    memcpy(shm_req_or_res->req.client_name, client_name, MAX_CLIENT_NAME_LEN);
+    strncpy(shm_req_or_res->client_name, client_name, MAX_CLIENT_NAME_LEN);
     shm_req_or_res->stage = 0;
 
-    q->nodes[q->tail].req_or_res = shm_req_or_res;
+    // ? Does the nodes req_or_res pointer point to the same shared memory object
+    // ? across proceeses ?
+
+    // ? It is the same value for the pointer. Which means, the memcpy of the client_name did not occur properly.
+    // q->nodes[q->tail].req_or_res = shm_req_or_res;
+    q->nodes[q->tail].req_or_res_block_id = req_or_res_block_id;
+
     q->tail = (q->tail + 1) % MAX_QUEUE_LEN;
+    q->size += 1;
     pthread_mutex_unlock(&q->lock);
 
     return shm_req_or_res;
@@ -95,13 +109,16 @@ RequestOrResponse *dequeue(queue_t *q)
 
     if (q->size == 0)
     {
-        fprintf(stderr, "Error: Connection queue empty. Could not fetch new request.\n");
+        fprintf(stderr, "ERROR: Connection queue empty. Could not fetch new request.\n");
         pthread_mutex_unlock(&q->lock);
         return NULL;
     }
 
-    RequestOrResponse *req_or_res = q->nodes[q->head].req_or_res;
+    int req_or_res_block_id = q->nodes[q->head].req_or_res_block_id;
+    RequestOrResponse *req_or_res = attach_with_shared_block_id(req_or_res_block_id);
+
     q->head = (q->head + 1) % MAX_QUEUE_LEN;
+    q->size -= 1;
 
     pthread_mutex_unlock(&q->lock);
 
@@ -114,13 +131,19 @@ RequestOrResponse *fetch(queue_t *q)
 
     if (q->size == 0)
     {
-        fprintf(stderr, "Error: Connection queue empty. Could not fetch new request.\n");
+        fprintf(stderr, "ERROR: Connection queue empty. Could not fetch new request.\n");
         pthread_mutex_unlock(&q->lock);
 
         return NULL;
     }
 
-    RequestOrResponse *req_or_res = q->nodes[q->head].req_or_res;
+    int req_or_res_block_id = q->nodes[q->head].req_or_res_block_id;
+
+    // TODO: Preferably attach memory block at the original location we had specified. If not, that is fine as well.
+    // RequestOrResponse *req_or_res = q->nodes[q->head].req_or_res;
+    // req_or_res = attach_with_shared_block_id(req_or_res_block_id, req_or_res);
+
+    RequestOrResponse *req_or_res = attach_with_shared_block_id(req_or_res_block_id);
     pthread_mutex_unlock(&q->lock);
 
     return req_or_res;

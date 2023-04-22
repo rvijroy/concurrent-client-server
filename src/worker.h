@@ -22,7 +22,7 @@
 typedef struct WorkerArgs
 {
     char client_name[MAX_CLIENT_NAME_LEN];
-    RequestOrResponse *shm_comm_channel;
+    int comm_channel_block_id;
 } WorkerArgs;
 
 Response handle_arithmetic(Request req)
@@ -107,43 +107,57 @@ Response handle_is_negative(Request req)
 
 void *worker_function(void *args)
 {
-    RequestOrResponse *req_or_res = ((WorkerArgs *)args)->shm_comm_channel;
+    printf("Starting work!!!\n");
+    int comm_channel_block_id = ((WorkerArgs *)args)->comm_channel_block_id;
+    RequestOrResponse *comm_reqres = get_comm_channel(comm_channel_block_id);
+
+    printf("Party starting for client: %s. Woohoooo!!!\n", comm_reqres->client_name);
+
+    if (comm_reqres == NULL)
+    {
+        fprintf(stderr, "ERROR: Invalid comm channel block id provided. Could not get communication channel block.\n");
+
+        free(args);
+        args = NULL;
+
+        pthread_exit(NULL);
+    }
 
     while (true)
     {
         printf("Waiting to reach stage 1...\n");
-        wait_until_stage(req_or_res, 1);
-        printf("%d", req_or_res->req.request_type);
-        if (req_or_res->req.request_type == ARITHMETIC)
+        wait_until_stage(comm_reqres, 1);
+        printf("%d", comm_reqres->req.request_type);
+        if (comm_reqres->req.request_type == ARITHMETIC)
         {
-            Response res = handle_arithmetic(req_or_res->req);
-            req_or_res->res = res;
+            Response res = handle_arithmetic(comm_reqres->req);
+            comm_reqres->res = res;
         }
-        if (req_or_res->req.request_type == EVEN_OR_ODD)
+        else if (comm_reqres->req.request_type == EVEN_OR_ODD)
         {
-            Response res = handle_even_or_odd(req_or_res->req);
-            req_or_res->res = res;
+            Response res = handle_even_or_odd(comm_reqres->req);
+            comm_reqres->res = res;
         }
-        if (req_or_res->req.request_type == IS_PRIME)
+        else if (comm_reqres->req.request_type == IS_PRIME)
         {
-            Response res = handle_is_prime(req_or_res->req);
-            req_or_res->res = res;
+            Response res = handle_is_prime(comm_reqres->req);
+            comm_reqres->res = res;
         }
-        if (req_or_res->req.request_type == IS_NEGATIVE)
+        else if (comm_reqres->req.request_type == IS_NEGATIVE)
         {
-            Response res = handle_is_negative(req_or_res->req);
-            req_or_res->res = res;
+            Response res = handle_is_negative(comm_reqres->req);
+            comm_reqres->res = res;
         }
-        if (req_or_res->req.request_type == UNREGISTER)
+        else if (comm_reqres->req.request_type == UNREGISTER)
         {
             // TODO: Cleanup if deregister
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
-            req_or_res->res.response_code = RESPONSE_SUCCESS;
+            comm_reqres->res.response_code = RESPONSE_SUCCESS;
 
             break;
         }
-        next_stage(req_or_res);
-        sleep(1);
+        next_stage(comm_reqres);
+        msleep(600);
     }
 
     free(args);

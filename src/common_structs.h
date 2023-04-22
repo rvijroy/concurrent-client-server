@@ -4,7 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "file_utils.h"
+#include "utils.h"
 
 #define CONNECT_CHANNEL_FNAME "srv_conn_channel"
 #define CONNECT_CHANNEL_SIZE (1024)
@@ -31,7 +31,6 @@ typedef enum ResponseCode
 typedef struct Request
 {
     RequestType request_type;
-    char client_name[MAX_CLIENT_NAME_LEN];
     int n1, n2;
     char op;
     int client_seq_num, server_seq_num;
@@ -39,7 +38,6 @@ typedef struct Request
 
 typedef struct Response
 {
-    int key;
     ResponseCode response_code;
     int client_seq_num, server_seq_num;
     int result;
@@ -48,32 +46,70 @@ typedef struct Response
 typedef struct RequestOrResponse
 {
     pthread_mutex_t lock;
+    char client_name[MAX_CLIENT_NAME_LEN];
     int stage;
+    int key;
     Request req;
     Response res;
 } RequestOrResponse;
 
-RequestOrResponse *create_req_or_res(const char *client_name)
-{
-    create_file_if_does_not_exist(client_name);
-    RequestOrResponse *req_or_res =
-        (RequestOrResponse *)attach_memory_block(client_name, sizeof(req_or_res));
+// RequestOrResponse *create_req_or_res(const char *client_name)
+// {
+//     create_file_if_does_not_exist(client_name);
+//     RequestOrResponse *req_or_res =
+//         (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
 
-    if (req_or_res == NULL)
+//     if (req_or_res == NULL)
+//     {
+//         fprintf(stderr, "ERROR: Could not create shared RequestOrResponse object for client %s\n", client_name);
+//         return NULL;
+//     }
+
+//     req_or_res->stage = 0;
+
+//     pthread_mutexattr_t attr;
+//     pthread_mutexattr_init(&attr);
+//     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+//     pthread_mutex_init(&req_or_res->lock, &attr);
+//     pthread_mutexattr_destroy(&attr);
+
+//     return req_or_res;
+// }
+
+RequestOrResponse *get_comm_channel(int comm_channel_block_id)
+{
+    RequestOrResponse *comm_channel = (RequestOrResponse *)attach_with_shared_block_id(comm_channel_block_id);
+    if (comm_channel == NULL)
     {
-        fprintf(stderr, "Error: Could not create shared RequestOrResponse object for client %s\n", client_name);
+        fprintf(stderr, "ERROR: Could not create shared RequestOrResponse object.\n");
         return NULL;
     }
 
-    req_or_res->stage = 0;
+    return comm_channel;
+}
 
+int create_comm_channel(const char *client_name)
+{
+    create_file_if_does_not_exist(client_name);
+    int comm_channel_block_id = get_shared_block(client_name, sizeof(RequestOrResponse));
+    if (comm_channel_block_id == IPC_RESULT_ERROR)
+    {
+        fprintf(stderr, "ERROR: get_shared_block failed. Could not get comm_channel_block_id.\n");
+        return IPC_RESULT_ERROR;
+    }
+
+    RequestOrResponse *comm_channel = get_comm_channel(comm_channel_block_id);
+    if (comm_channel == NULL)
+        return IPC_RESULT_ERROR;
+
+    comm_channel->stage = 0;
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&req_or_res->lock, &attr);
+    pthread_mutex_init(&comm_channel->lock, &attr);
     pthread_mutexattr_destroy(&attr);
 
-    return req_or_res;
+    return comm_channel_block_id;
 }
 
 void wait_until_stage(RequestOrResponse *req_or_res, int stage)
@@ -82,8 +118,11 @@ void wait_until_stage(RequestOrResponse *req_or_res, int stage)
     while (!reached_stage)
     {
         pthread_mutex_lock(&req_or_res->lock);
+        printf("On stage: %d waiting for stage: %d\n", req_or_res->stage, stage);
         reached_stage = (req_or_res->stage == stage);
         pthread_mutex_unlock(&req_or_res->lock);
+        if (!reached_stage)
+            msleep(500);
     }
 }
 
@@ -91,7 +130,7 @@ void next_stage(RequestOrResponse *req_or_res)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = (req_or_res->stage + 1) % 3;
-    printf("Set stage to: %d", req_or_res->stage);
+    printf("Set stage to: %d\n", req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 
@@ -99,7 +138,7 @@ void set_stage(RequestOrResponse *req_or_res, int stage)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = stage;
-    printf("Set stage to: %d", req_or_res->stage);
+    printf("Set stage to: %d\n", req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 

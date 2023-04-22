@@ -1,6 +1,4 @@
 bin/
 *.dSYM/
 
-.vscode/
-client
-server
+.DS_Store
