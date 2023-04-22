@@ -127,11 +127,8 @@ void *worker_function(void *args)
 {
     logger("DEBUG", "[%08x] Setting up communication channel for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
     int comm_channel_block_id = ((WorkerArgs *)args)->comm_channel_block_id;
+
     RequestOrResponse *comm_reqres = get_comm_channel(comm_channel_block_id);
-    logger("INFO", "[%08x] Communication channel setup succesful for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
-
-    unsigned long thread_tsr = 0;
-
     if (comm_reqres == NULL)
     {
         logger("ERROR", "[%08x] Invalid comm channel block id provided. Could not get communication channel block.", pthread_self());
@@ -141,7 +138,9 @@ void *worker_function(void *args)
 
         pthread_exit(NULL);
     }
+    logger("INFO", "[%08x] Communication channel setup succesful for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
 
+    unsigned long thread_tsr = 0;
     while (true)
     {
         wait_until_stage(comm_reqres, 1);
