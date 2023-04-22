@@ -99,7 +99,7 @@ void wait_until_stage(RequestOrResponse *req_or_res, int stage)
     while (!reached_stage)
     {
         pthread_mutex_lock(&req_or_res->lock);
-        logger("DEBUG", "On stage: %d waiting for stage: %d", req_or_res->stage, stage);
+        logger("DEBUG", "[%08x] On stage: %d waiting for stage: %d", pthread_self(), req_or_res->stage, stage);
         reached_stage = (req_or_res->stage == stage);
         pthread_mutex_unlock(&req_or_res->lock);
         if (!reached_stage)
@@ -111,7 +111,7 @@ void next_stage(RequestOrResponse *req_or_res)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = (req_or_res->stage + 1) % 3;
-    logger("DEBUG", "Set stage to: %d", req_or_res->stage);
+    logger("DEBUG", "[%08x] Set stage to: %d", pthread_self(), req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 
@@ -119,7 +119,7 @@ void set_stage(RequestOrResponse *req_or_res, int stage)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = stage;
-    logger("DEBUG", "Set stage to: %d", req_or_res->stage);
+    logger("DEBUG", "[%08x] Set stage to: %d", pthread_self(), req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 

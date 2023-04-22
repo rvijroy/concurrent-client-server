@@ -35,4 +35,4 @@ $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -r $(BIN_DIR)/*.o $(BIN_DIR)/server $(BIN_DIR)/client **/*.log
+	rm -rf $(BIN_DIR)/* **/*.log
