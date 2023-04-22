@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+#include "logger.h"
 #include "utils.h"
 
 #define CONNECT_CHANNEL_FNAME "srv_conn_channel"
@@ -61,7 +62,7 @@ typedef struct RequestOrResponse
 
 //     if (req_or_res == NULL)
 //     {
-//         fprintf(stderr, "ERROR: Could not create shared RequestOrResponse object for client %s\n", client_name);
+//         logger("ERROR", "Could not create shared RequestOrResponse object for client %s" , client_name);
 //         return NULL;
 //     }
 
@@ -81,7 +82,7 @@ RequestOrResponse *get_comm_channel(int comm_channel_block_id)
     RequestOrResponse *comm_channel = (RequestOrResponse *)attach_with_shared_block_id(comm_channel_block_id);
     if (comm_channel == NULL)
     {
-        fprintf(stderr, "ERROR: Could not create shared RequestOrResponse object.\n");
+        logger("ERROR", "Could not create shared RequestOrResponse object." );
         return NULL;
     }
 
@@ -94,7 +95,7 @@ int create_comm_channel(const char *client_name)
     int comm_channel_block_id = get_shared_block(client_name, sizeof(RequestOrResponse));
     if (comm_channel_block_id == IPC_RESULT_ERROR)
     {
-        fprintf(stderr, "ERROR: get_shared_block failed. Could not get comm_channel_block_id.\n");
+        logger("ERROR", "get_shared_block failed. Could not get comm_channel_block_id." );
         return IPC_RESULT_ERROR;
     }
 

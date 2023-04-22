@@ -7,6 +7,9 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "logger.h"
+
+
 int create_file_if_does_not_exist(const char *filename)
 {
     return open(filename, O_CREAT | O_WRONLY | O_EXCL, S_IRUSR | S_IWUSR);
@@ -23,41 +26,41 @@ int does_file_exist(const char *filename)
         switch (errno)
         {
         case EINVAL:
-            fprintf(stderr, "ERROR: Call to access failed. The value of mode argument is invalid.\n");
+            logger("ERROR", "Call to access failed. The value of mode argument is invalid." );
             break;
 
         case ENOTDIR:
-            fprintf(stderr, "ERROR: Call to access failed. A component of the path prefix is not a directory.\n");
+            logger("ERROR", "Call to access failed. A component of the path prefix is not a directory." );
             break;
 
         case ENAMETOOLONG:
-            fprintf(stderr, "ERROR: Call to access failed. A component of a pathname exceeded {NAME_MAX} characters, or an entire path name exceeded {PATH_MAX} characters.\n");
+            logger("ERROR", "Call to access failed. A component of a pathname exceeded {NAME_MAX} characters, or an entire path name exceeded {PATH_MAX} characters." );
             break;
 
         case ELOOP:
-            fprintf(stderr, "ERROR: Call to access failed. Too many symbolic links were encountered in translating the pathname or AT_SYMLINK_NOFOLLOW_ANY was passed and a symbolic link was encountered in translating the pathname.\n");
+            logger("ERROR", "Call to access failed. Too many symbolic links were encountered in translating the pathname or AT_SYMLINK_NOFOLLOW_ANY was passed and a symbolic link was encountered in translating the pathname." );
             break;
 
         case EROFS:
-            fprintf(stderr, "ERROR: Call to access failed. Write access is requested for a file on a read-only file system.\n");
+            logger("ERROR", "Call to access failed. Write access is requested for a file on a read-only file system." );
             break;
 
         case ETXTBSY:
-            fprintf(stderr, "ERROR: Call to access failed. Write access is requested for a pure procedure (shared text) file presently being executed.\n");
+            logger("ERROR", "Call to access failed. Write access is requested for a pure procedure (shared text) file presently being executed." );
             break;
 
         case EACCES:
-            fprintf(stderr, "ERROR: Call to access failed. Permission bits of the file mode do not permit the requested access, or search permission is denied on a component of the path prefix.\n");
+            logger("ERROR", "Call to access failed. Permission bits of the file mode do not permit the requested access, or search permission is denied on a component of the path prefix." );
             break;
         case EFAULT:
-            fprintf(stderr, "ERROR: Call to access failed. The path argument points outside the process's allocated address space.\n");
+            logger("ERROR", "Call to access failed. The path argument points outside the process's allocated address space." );
             break;
         case EIO:
-            fprintf(stderr, "ERROR: Call to access failed. An I/O error occurred while reading from or writing to the file system.\n");
+            logger("ERROR", "Call to access failed. An I/O error occurred while reading from or writing to the file system." );
             break;
 
         default:
-            fprintf(stderr, "ERROR: Call to access failed. Unknown error occured.\n");
+            logger("ERROR", "Call to access failed. Unknown error occured." );
             break;
         }
         return -1;

@@ -7,6 +7,7 @@
 
 #include "common_structs.h"
 #include "shared_memory.h"
+#include "logger.h"
 
 #define MAX_QUEUE_LEN 100
 
@@ -31,7 +32,7 @@ queue_t *create_queue()
 
     if (q == NULL)
     {
-        fprintf(stderr, "ERROR: Could not create shared memory block for queue.\n");
+        logger("ERROR", "Could not create shared memory block for queue." );
         return NULL;
     }
 
@@ -52,7 +53,7 @@ queue_t *get_queue()
     queue_t *q = (queue_t *)attach_memory_block(CONNECT_CHANNEL_FNAME, sizeof(queue_t));
     if (q == NULL)
     {
-        fprintf(stderr, "ERROR: Could not create shared memory block for queue.\n");
+        logger("ERROR", "Could not create shared memory block for queue." );
         return NULL;
     }
 
@@ -64,7 +65,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     pthread_mutex_lock(&q->lock);
     if (q->size == MAX_QUEUE_LEN)
     {
-        fprintf(stderr, "ERROR: Could not enqueue to connection queue. Connection queue is full.\n");
+        logger("ERROR", "Could not enqueue to connection queue. Connection queue is full." );
         pthread_mutex_unlock(&q->lock);
     }
 
@@ -76,7 +77,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     RequestOrResponse *shm_req_or_res = (RequestOrResponse *)attach_with_shared_block_id(req_or_res_block_id);
     if (shm_req_or_res == NULL)
     {
-        fprintf(stderr, "ERROR: Could not create shared memory block %s for the queue.\n", shm_req_or_res_fname);
+        logger("ERROR", "Could not create shared memory block %s for the queue." , shm_req_or_res_fname);
         return NULL;
     }
 
@@ -109,7 +110,7 @@ RequestOrResponse *dequeue(queue_t *q)
 
     if (q->size == 0)
     {
-        fprintf(stderr, "ERROR: Connection queue empty. Could not fetch new request.\n");
+        logger("INFO", "Connection queue empty. Nothing to dequeue." );
         pthread_mutex_unlock(&q->lock);
         return NULL;
     }
@@ -131,7 +132,7 @@ RequestOrResponse *fetch(queue_t *q)
 
     if (q->size == 0)
     {
-        fprintf(stderr, "ERROR: Connection queue empty. Could not fetch new request.\n");
+        logger("INFO", "Connection queue empty. Nothing to fetch." );
         pthread_mutex_unlock(&q->lock);
 
         return NULL;

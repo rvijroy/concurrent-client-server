@@ -10,6 +10,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include "logger.h"
+
 #define IPC_RESULT_ERROR (-1)
 
 int create_key(const char *filename)
@@ -25,7 +27,7 @@ static int get_shared_block(const char *filename, size_t size)
 
     if (key == IPC_RESULT_ERROR)
     {
-        fprintf(stderr, "ERROR: File %s does not exist, or can not be accesses. Verify its existence and permissions.\n", filename);
+        logger("ERROR", "File %s does not exist, or can not be accesses. Verify its existence and permissions.", filename);
         return IPC_RESULT_ERROR;
     }
 
@@ -34,19 +36,19 @@ static int get_shared_block(const char *filename, size_t size)
     if (shared_block_id == IPC_RESULT_ERROR)
     {
         if (errno == EACCES)
-            fprintf(stderr, "ERROR: shmget failed with code EACCESS.\n");
+            logger("ERROR", "shmget failed with code EACCESS.");
         else if (errno == EEXIST)
-            fprintf(stderr, "ERROR: shmget failed with code EEXIST.\n");
+            logger("ERROR", "shmget failed with code EEXIST.");
         else if (errno == EINVAL)
-            fprintf(stderr, "ERROR: shmget failed with code EINVAL.\n");
+            logger("ERROR", "shmget failed with code EINVAL.");
         else if (errno == ENOENT)
-            fprintf(stderr, "ERROR: shmget failed with code ENOENT.\n");
+            logger("ERROR", "shmget failed with code ENOENT.");
         else if (errno == ENOMEM)
-            fprintf(stderr, "ERROR: shmget failed with code ENOMEM.\n");
+            logger("ERROR", "shmget failed with code ENOMEM.");
         else if (errno == ENOSPC)
-            fprintf(stderr, "ERROR: shmget failed with code ENOSPC.\n");
+            logger("ERROR", "shmget failed with code ENOSPC.");
         else
-            fprintf(stderr, "ERROR: wtf.\n");
+            logger("ERROR", "wtf.");
 
         return IPC_RESULT_ERROR;
     }
@@ -60,9 +62,9 @@ void *attach_with_shared_block_id(int shared_block_id)
     // map the shared block into this process's memory
     // and return a pointer to it
     void *block = shmat(shared_block_id, NULL, 0);
-    if (block == (void*)IPC_RESULT_ERROR)
+    if (block == (void *)IPC_RESULT_ERROR)
     {
-        fprintf(stderr, "ERROR: Could not attached to shared memory block with block_id: %d.", shared_block_id);
+        logger("ERROR", "Could not attached to shared memory block with block_id: %d", shared_block_id);
         return NULL;
     }
 
@@ -74,7 +76,7 @@ void *attach_memory_block(const char *filename, size_t size)
     int shared_block_id = get_shared_block(filename, size);
     if (shared_block_id == IPC_RESULT_ERROR)
     {
-        fprintf(stderr, "ERROR: get_shared_block failed. Could not get shared_block_id.\n");
+        logger("ERROR", "get_shared_block failed. Could not get shared_block_id.");
         return NULL;
     }
 

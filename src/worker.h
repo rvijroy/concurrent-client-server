@@ -7,6 +7,7 @@
 #include <string.h>
 #include <pthread.h>
 
+#include "logger.h"
 #include "common_structs.h"
 
 #define CONNECT_CHANNEL_FNAME "srv_conn_channel"
@@ -115,7 +116,7 @@ void *worker_function(void *args)
 
     if (comm_reqres == NULL)
     {
-        fprintf(stderr, "ERROR: Invalid comm channel block id provided. Could not get communication channel block.\n");
+        logger("ERROR", "Invalid comm channel block id provided. Could not get communication channel block." );
 
         free(args);
         args = NULL;

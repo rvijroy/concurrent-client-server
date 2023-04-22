@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "common_structs.h"
 #include "worker.h"
+#include "logger.h"
 #include "conn_chanel.h"
 
 int register_client(RequestOrResponse *conn_reqres)
@@ -16,12 +17,12 @@ int register_client(RequestOrResponse *conn_reqres)
     int comm_channel_exists = does_file_exist(conn_reqres->client_name);
     if (comm_channel_exists == 1)
     {
-        fprintf(stderr, "ERROR: The client %s already exists. Please try a new client_name\n", conn_reqres->client_name);
+        logger("ERROR", "The client %s already exists. Please try a new client_name", conn_reqres->client_name);
         return -1;
     }
     else if (comm_channel_exists != 0)
     {
-        fprintf(stderr, "ERROR: Something went wrong when verify client name (%s) validity. Please debug with other messages.\n", conn_reqres->client_name);
+        logger("ERROR", "Something went wrong when verify client name (%s) validity. Please debug with other messages.", conn_reqres->client_name);
         return -1;
     }
 
@@ -31,7 +32,7 @@ int register_client(RequestOrResponse *conn_reqres)
     args->comm_channel_block_id = create_comm_channel(args->client_name);
     if (args->comm_channel_block_id == IPC_RESULT_ERROR)
     {
-        fprintf(stderr, "ERROR: Could not get shared block id for client %s.", args->client_name);
+        logger("ERROR", "Could not get shared block id for client %s.", args->client_name);
         return -1;
     }
 
@@ -48,10 +49,13 @@ int register_client(RequestOrResponse *conn_reqres)
 
 int main(int argc, char **argv)
 {
+    if (init_logger("server") == EXIT_FAILURE)
+        return EXIT_FAILURE;
+
     queue_t *conn_q = create_queue();
     if (conn_q == NULL)
     {
-        fprintf(stderr, "ERROR: Could not create connection queue.\n");
+        logger("ERROR", "Could not create connection queue.");
         exit(EXIT_FAILURE);
     }
 
@@ -70,12 +74,14 @@ int main(int argc, char **argv)
             printf("Request received to register new client: %s\n", conn_reqres->client_name);
             if (register_client(conn_reqres) < 0)
             {
-                fprintf(stderr, "ERROR: Could not register client %s\n", conn_reqres->client_name);
+                logger("ERROR", "Could not register client %s", conn_reqres->client_name);
             }
         }
 
         msleep(400);
     }
+
+    close_logger();
 
     return 0;
 }

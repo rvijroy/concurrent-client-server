@@ -7,13 +7,14 @@
 #include "common_structs.h"
 #include "utils.h"
 #include "conn_chanel.h"
+#include "logger.h"
 
 int connect_to_server(const char *client_name)
 {
     queue_t *conn_q = get_queue();
     if (conn_q == NULL)
     {
-        fprintf(stderr, "ERROR: Could not get connection queue.\n");
+        logger("ERROR", "Could not get connection queue.");
         exit(EXIT_FAILURE);
     }
 
@@ -127,13 +128,13 @@ int communicate(const char *client_name, int key)
             printf("Result: %d\n", comm_reqres->res.result);
 
         else if (comm_reqres->res.response_code == RESPONSE_UNSUPPORTED)
-            fprintf(stderr, "ERROR: Unsupported request\n");
+            logger("ERROR", "Unsupported request" );
 
         else if (comm_reqres->res.response_code == RESPONSE_UNKNOWN_FAILURE)
-            fprintf(stderr, "ERROR: Unknown failure\n");
+            logger("ERROR", "Unknown failure" );
 
         else
-            fprintf(stderr, "ERROR: Unsupported response. Something is wrong with the server.\n");
+            logger("ERROR", "Unsupported response. Something is wrong with the server." );
         next_stage(comm_reqres);
     }
 
@@ -142,6 +143,9 @@ int communicate(const char *client_name, int key)
 
 int main(int argc, char **argv)
 {
+
+    if (init_logger("client") == EXIT_FAILURE)
+        return EXIT_FAILURE;
 
 #ifndef DEBUGGER
     if (argc < 2)
@@ -160,12 +164,15 @@ int main(int argc, char **argv)
     int connect_channel_exists = does_file_exist(CONNECT_CHANNEL_FNAME);
     if (connect_channel_exists != 1)
     {
-        fprintf(stderr, "ERROR: Server likely not running. Please start the server and try again or debug with other messages.\n");
+        logger("ERROR", "Server likely not running. Please start the server and try again or debug with other messages.");
+        return EXIT_FAILURE;
     }
 
     int key = connect_to_server(client_name);
     printf("Received key: %d\n. Connection Established succesfully.\n", key);
     communicate(client_name, key);
+
+    close_logger();
 
     return 0;
 }
