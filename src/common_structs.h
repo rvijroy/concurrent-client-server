@@ -26,7 +26,7 @@ typedef enum ResponseCode
 {
     RESPONSE_SUCCESS = 200,
     RESPONSE_UNSUPPORTED = 422,
-    RESPONSE_UNKNOWN_FAILURE = 500
+    RESPONSE_FAILURE = 500
 } ResponseCode;
 
 typedef struct Request
@@ -34,6 +34,7 @@ typedef struct Request
     RequestType request_type;
     int n1, n2;
     char op;
+    int key;
     // int client_seq_num, server_seq_num;
 } Request;
 
@@ -50,7 +51,6 @@ typedef struct RequestOrResponse
     char client_name[MAX_CLIENT_NAME_LEN];
     char filename[MAX_CLIENT_NAME_LEN];
     int stage;
-    int key;
     Request req;
     Response res;
 } RequestOrResponse;

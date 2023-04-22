@@ -90,7 +90,7 @@ Response handle_is_prime(Request req)
     Response res;
     if (req.n1 < 0)
     {
-        res.response_code = RESPONSE_UNKNOWN_FAILURE;
+        res.response_code = RESPONSE_FAILURE;
         return res;
     }
 

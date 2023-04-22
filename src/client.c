@@ -15,14 +15,20 @@ int connect_to_server(const char *client_name)
     if (conn_q == NULL)
     {
         logger("ERROR", "Could not get connection queue.");
-        exit(EXIT_FAILURE);
+        return -1;
     }
 
     logger("INFO", "Sending register request to server with name %s", client_name);
     RequestOrResponse *conn_reqres = post(conn_q, client_name);
     wait_until_stage(conn_reqres, 1);
 
-    int key = conn_reqres->key;
+    if (conn_reqres->res.response_code != RESPONSE_SUCCESS)
+    {
+        logger("ERROR", "Registering to server failed with response code %d", conn_reqres->res.response_code);
+        return -1;
+    }
+
+    int key = conn_reqres->res.result;
 
     logger("INFO", "Cleaning up the personal connection channel");
     if (destroy_node(conn_reqres) == -1)
@@ -37,6 +43,9 @@ int communicate(const char *client_name, int key)
     RequestOrResponse *comm_reqres = get_req_or_res(client_name);
     if (comm_reqres == NULL)
         return -1;
+
+    // We don't set key here, but while making request,
+    // since we can never be sure if the server tampered with the key
 
     logger("DEBUG", "Obtained communication channel succesfully");
 
@@ -67,6 +76,7 @@ int communicate(const char *client_name, int key)
             n1 = 4, n2 = 5, op = '*';
 #endif
 
+            comm_reqres->req.key = key;
             comm_reqres->req.request_type = ARITHMETIC;
             comm_reqres->req.n1 = n1;
             comm_reqres->req.n2 = n2;
@@ -86,6 +96,7 @@ int communicate(const char *client_name, int key)
             n1 = 43;
 #endif
 
+            comm_reqres->req.key = key;
             comm_reqres->req.request_type = EVEN_OR_ODD;
             comm_reqres->req.n1 = n1;
 
@@ -103,6 +114,7 @@ int communicate(const char *client_name, int key)
 #else
             n1 = 43;
 #endif
+            comm_reqres->req.key = key;
             comm_reqres->req.request_type = IS_PRIME;
             comm_reqres->req.n1 = n1;
 
@@ -120,6 +132,7 @@ int communicate(const char *client_name, int key)
 #else
             n1 = -5;
 #endif
+            comm_reqres->req.key = key;
             comm_reqres->req.request_type = IS_NEGATIVE;
             comm_reqres->req.n1 = n1;
 
@@ -132,6 +145,7 @@ int communicate(const char *client_name, int key)
         {
             printf("Unregistering...\n");
             logger("INFO", "Initiating unregister");
+            comm_reqres->req.key = key;
             comm_reqres->req.request_type = UNREGISTER;
 
             logger("DEBUG", "Sending request of type %d to server", current_choice);
@@ -157,7 +171,7 @@ int communicate(const char *client_name, int key)
         else if (comm_reqres->res.response_code == RESPONSE_UNSUPPORTED)
             logger("ERROR", "Unsupported request. Try another.");
 
-        else if (comm_reqres->res.response_code == RESPONSE_UNKNOWN_FAILURE)
+        else if (comm_reqres->res.response_code == RESPONSE_FAILURE)
             logger("ERROR", "Unknown failure");
 
         else
@@ -195,6 +209,12 @@ int main(int argc, char **argv)
     }
 
     int key = connect_to_server(client_name);
+    if (key < 0)
+    {
+        logger("ERROR", "Could not connect to server. Ending the process.");
+        return EXIT_FAILURE;
+    }
+
     communicate(client_name, key);
 
     close_logger();

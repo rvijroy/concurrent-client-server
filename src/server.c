@@ -31,13 +31,17 @@ int register_client(RequestOrResponse *conn_reqres)
     if (comm_channel_exists == 1)
     {
         logger("ERROR", "The client %s already exists. Please try a new client_name", conn_reqres->client_name);
+        conn_reqres->res.response_code = RESPONSE_FAILURE;
         set_stage(conn_reqres, 1);
+
         return -1;
     }
     else if (comm_channel_exists != 0)
     {
         logger("ERROR", "Something went wrong when verify client name (%s) validity. Please debug with other messages.", conn_reqres->client_name);
+        conn_reqres->res.response_code = RESPONSE_FAILURE;
         set_stage(conn_reqres, 1);
+
         return -1;
     }
 
@@ -48,6 +52,7 @@ int register_client(RequestOrResponse *conn_reqres)
     if (args->comm_channel_block_id == IPC_RESULT_ERROR)
     {
         logger("ERROR", "Could not get shared block id for client %s.", args->client_name);
+        conn_reqres->res.response_code = RESPONSE_FAILURE;
         set_stage(conn_reqres, 1);
         return -1;
     }
@@ -55,8 +60,9 @@ int register_client(RequestOrResponse *conn_reqres)
     pthread_t client_tid;
     pthread_create(&client_tid, NULL, worker_function, args);
 
-    conn_reqres->key = ftok(args->client_name, 0);
-    logger("INFO", "Client registered succesfully with key: %d", conn_reqres->key);
+    conn_reqres->res.response_code = RESPONSE_SUCCESS;
+    conn_reqres->res.result = ftok(args->client_name, 0);
+    logger("INFO", "Client registered succesfully with key: %d", conn_reqres->res.result);
 
     set_stage(conn_reqres, 1);
     return 0;
