@@ -1,0 +1,30 @@
+{
+    "configurations": [
+        {
+            "name": "B&D Active file (ext)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "preLaunchTask": "Build Active File",
+            "MIMode": "lldb"
+        },
+        {
+            "name": "B&D Active file",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/bin/${fileBasenameNoExtension}",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "preLaunchTask": "Build Active File",
+            "MIMode": "lldb"
+        },
+    ]
+}
