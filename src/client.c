@@ -54,7 +54,7 @@ int communicate(const char *client_name, int key)
 #ifndef DEBUGGER
 
             printf("Enter operation with format <num1> <op> <num2>: ");
-            scanf("%d %d %c", &n1, &n2, &op);
+            scanf("%d %c %d", &n1, &op, &n2);
 #else
             n1 = 4, n2 = 5, op = '*';
 #endif
@@ -111,14 +111,16 @@ int communicate(const char *client_name, int key)
         else if (current_choice == UNREGISTER)
         {
             printf("Unregistering...\n");
+            logger("INFO", "Initiating unregister");
             comm_reqres->req.request_type = UNREGISTER;
             next_stage(comm_reqres);
             break;
         }
 
-        else if (current_choice == 5) // DON'T DO ANYTHING AND EXIT
+        else // DON'T DO ANYTHING AND EXIT
         {
             // TODO: Check if synch is required here.
+            logger("WARN", "Input was invalid. Just exiting.");
             next_stage(comm_reqres);
             break;
         }
@@ -128,13 +130,13 @@ int communicate(const char *client_name, int key)
             printf("Result: %d\n", comm_reqres->res.result);
 
         else if (comm_reqres->res.response_code == RESPONSE_UNSUPPORTED)
-            logger("ERROR", "Unsupported request" );
+            logger("ERROR", "Unsupported request");
 
         else if (comm_reqres->res.response_code == RESPONSE_UNKNOWN_FAILURE)
-            logger("ERROR", "Unknown failure" );
+            logger("ERROR", "Unknown failure");
 
         else
-            logger("ERROR", "Unsupported response. Something is wrong with the server." );
+            logger("ERROR", "Unsupported response. Something is wrong with the server.");
         next_stage(comm_reqres);
     }
 
@@ -143,10 +145,6 @@ int communicate(const char *client_name, int key)
 
 int main(int argc, char **argv)
 {
-
-    if (init_logger("client") == EXIT_FAILURE)
-        return EXIT_FAILURE;
-
 #ifndef DEBUGGER
     if (argc < 2)
     {
@@ -159,6 +157,9 @@ int main(int argc, char **argv)
     char client_name[MAX_CLIENT_NAME_LEN];
     sprintf(client_name, "xyz_%lu", (unsigned long)time(NULL));
 #endif
+
+    if (init_logger(client_name) == EXIT_FAILURE)
+        return EXIT_FAILURE;
 
     // If the connection file does not exist, then the server is probably not running.
     int connect_channel_exists = does_file_exist(CONNECT_CHANNEL_FNAME);

@@ -54,35 +54,12 @@ typedef struct RequestOrResponse
     Response res;
 } RequestOrResponse;
 
-// RequestOrResponse *create_req_or_res(const char *client_name)
-// {
-//     create_file_if_does_not_exist(client_name);
-//     RequestOrResponse *req_or_res =
-//         (RequestOrResponse *)attach_memory_block(client_name, sizeof(RequestOrResponse));
-
-//     if (req_or_res == NULL)
-//     {
-//         logger("ERROR", "Could not create shared RequestOrResponse object for client %s" , client_name);
-//         return NULL;
-//     }
-
-//     req_or_res->stage = 0;
-
-//     pthread_mutexattr_t attr;
-//     pthread_mutexattr_init(&attr);
-//     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-//     pthread_mutex_init(&req_or_res->lock, &attr);
-//     pthread_mutexattr_destroy(&attr);
-
-//     return req_or_res;
-// }
-
 RequestOrResponse *get_comm_channel(int comm_channel_block_id)
 {
     RequestOrResponse *comm_channel = (RequestOrResponse *)attach_with_shared_block_id(comm_channel_block_id);
     if (comm_channel == NULL)
     {
-        logger("ERROR", "Could not create shared RequestOrResponse object." );
+        logger("ERROR", "Could not create shared RequestOrResponse object.");
         return NULL;
     }
 
@@ -95,7 +72,7 @@ int create_comm_channel(const char *client_name)
     int comm_channel_block_id = get_shared_block(client_name, sizeof(RequestOrResponse));
     if (comm_channel_block_id == IPC_RESULT_ERROR)
     {
-        logger("ERROR", "get_shared_block failed. Could not get comm_channel_block_id." );
+        logger("ERROR", "get_shared_block failed. Could not get comm_channel_block_id.");
         return IPC_RESULT_ERROR;
     }
 
@@ -119,7 +96,7 @@ void wait_until_stage(RequestOrResponse *req_or_res, int stage)
     while (!reached_stage)
     {
         pthread_mutex_lock(&req_or_res->lock);
-        printf("On stage: %d waiting for stage: %d\n", req_or_res->stage, stage);
+        logger("DEBUG", "On stage: %d waiting for stage: %d", req_or_res->stage, stage);
         reached_stage = (req_or_res->stage == stage);
         pthread_mutex_unlock(&req_or_res->lock);
         if (!reached_stage)
@@ -131,7 +108,7 @@ void next_stage(RequestOrResponse *req_or_res)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = (req_or_res->stage + 1) % 3;
-    printf("Set stage to: %d\n", req_or_res->stage);
+    logger("DEBUG", "Set stage to: %d", req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 
@@ -139,7 +116,7 @@ void set_stage(RequestOrResponse *req_or_res, int stage)
 {
     pthread_mutex_lock(&req_or_res->lock);
     req_or_res->stage = stage;
-    printf("Set stage to: %d\n", req_or_res->stage);
+    logger("DEBUG", "Set stage to: %d", req_or_res->stage);
     pthread_mutex_unlock(&req_or_res->lock);
 }
 

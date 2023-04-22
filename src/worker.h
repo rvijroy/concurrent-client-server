@@ -108,15 +108,12 @@ Response handle_is_negative(Request req)
 
 void *worker_function(void *args)
 {
-    printf("Starting work!!!\n");
     int comm_channel_block_id = ((WorkerArgs *)args)->comm_channel_block_id;
     RequestOrResponse *comm_reqres = get_comm_channel(comm_channel_block_id);
 
-    printf("Party starting for client: %s. Woohoooo!!!\n", comm_reqres->client_name);
-
     if (comm_reqres == NULL)
     {
-        logger("ERROR", "Invalid comm channel block id provided. Could not get communication channel block." );
+        logger("ERROR", "[%08x] Invalid comm channel block id provided. Could not get communication channel block.", pthread_self());
 
         free(args);
         args = NULL;
@@ -126,9 +123,9 @@ void *worker_function(void *args)
 
     while (true)
     {
-        printf("Waiting to reach stage 1...\n");
         wait_until_stage(comm_reqres, 1);
-        printf("%d", comm_reqres->req.request_type);
+        logger("INFO", "[%08x] Received request of type %d", pthread_self(), comm_reqres->req.request_type);
+
         if (comm_reqres->req.request_type == ARITHMETIC)
         {
             Response res = handle_arithmetic(comm_reqres->req);
@@ -152,8 +149,14 @@ void *worker_function(void *args)
         else if (comm_reqres->req.request_type == UNREGISTER)
         {
             // TODO: Cleanup if deregister
+            logger("INFO", "[%08x] Initiating deregister of client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
-            comm_reqres->res.response_code = RESPONSE_SUCCESS;
+
+            detach_memory_block(comm_reqres);
+            destroy_memory_block(((WorkerArgs *)args)->client_name); // TODO: Refactor this out.
+
+            logger("INFO", "[%08x] Removing file %s as a part of deregistration", pthread_self(), ((WorkerArgs *)args)->client_name);
+            remove_file(((WorkerArgs *)args)->client_name);
 
             break;
         }

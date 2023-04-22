@@ -11,6 +11,19 @@
 #include "logger.h"
 #include "conn_chanel.h"
 
+static queue_t *conn_q;
+
+void handle_sigint(int sig)
+{
+    logger("INFO", "Starting cleanup.");
+    destroy_queue(conn_q);
+
+    logger("INFO", "Closing logger");
+    close_logger();
+
+    exit(EXIT_FAILURE);
+}
+
 int register_client(RequestOrResponse *conn_reqres)
 {
     wait_until_stage(conn_reqres, 0);
@@ -41,7 +54,7 @@ int register_client(RequestOrResponse *conn_reqres)
     pthread_create(&client_tid, NULL, worker_function, args);
 
     conn_reqres->key = ftok(args->client_name, 0);
-    printf("INFO: Client registered succesfully with key: %d\n", conn_reqres->key);
+    logger("INFO", "Client registered succesfully with key: %d", conn_reqres->key);
 
     set_stage(conn_reqres, 1);
     return 0;
@@ -49,10 +62,12 @@ int register_client(RequestOrResponse *conn_reqres)
 
 int main(int argc, char **argv)
 {
+    signal(SIGINT, handle_sigint);
+
     if (init_logger("server") == EXIT_FAILURE)
         return EXIT_FAILURE;
 
-    queue_t *conn_q = create_queue();
+    conn_q = create_queue();
     if (conn_q == NULL)
     {
         logger("ERROR", "Could not create connection queue.");
@@ -69,9 +84,8 @@ int main(int argc, char **argv)
         // RequestOrResponse *conn_reqres = fetch(conn_q);
         if (conn_reqres)
         {
-            printf("Waiting for registration...\n");
 
-            printf("Request received to register new client: %s\n", conn_reqres->client_name);
+            logger("INFO", "Request received to register new client: %s", conn_reqres->client_name);
             if (register_client(conn_reqres) < 0)
             {
                 logger("ERROR", "Could not register client %s", conn_reqres->client_name);

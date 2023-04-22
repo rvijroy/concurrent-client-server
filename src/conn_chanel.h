@@ -32,7 +32,7 @@ queue_t *create_queue()
 
     if (q == NULL)
     {
-        logger("ERROR", "Could not create shared memory block for queue." );
+        logger("ERROR", "Could not create shared memory block for queue.");
         return NULL;
     }
 
@@ -53,7 +53,7 @@ queue_t *get_queue()
     queue_t *q = (queue_t *)attach_memory_block(CONNECT_CHANNEL_FNAME, sizeof(queue_t));
     if (q == NULL)
     {
-        logger("ERROR", "Could not create shared memory block for queue." );
+        logger("ERROR", "Could not create shared memory block for queue.");
         return NULL;
     }
 
@@ -65,19 +65,19 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     pthread_mutex_lock(&q->lock);
     if (q->size == MAX_QUEUE_LEN)
     {
-        logger("ERROR", "Could not enqueue to connection queue. Connection queue is full." );
+        logger("ERROR", "Could not enqueue to connection queue. Connection queue is full.");
         pthread_mutex_unlock(&q->lock);
     }
 
-    char shm_req_or_res_fname[MAX_CLIENT_NAME_LEN];
-    sprintf(shm_req_or_res_fname, "queue_%d", q->tail);
-    create_file_if_does_not_exist(shm_req_or_res_fname);
+    char shm_reqres_fname[MAX_CLIENT_NAME_LEN];
+    sprintf(shm_reqres_fname, "queue_%d", q->tail);
+    create_file_if_does_not_exist(shm_reqres_fname);
 
-    int req_or_res_block_id = get_shared_block(shm_req_or_res_fname, sizeof(RequestOrResponse));
+    int req_or_res_block_id = get_shared_block(shm_reqres_fname, sizeof(RequestOrResponse));
     RequestOrResponse *shm_req_or_res = (RequestOrResponse *)attach_with_shared_block_id(req_or_res_block_id);
     if (shm_req_or_res == NULL)
     {
-        logger("ERROR", "Could not create shared memory block %s for the queue." , shm_req_or_res_fname);
+        logger("ERROR", "Could not create shared memory block %s for the queue.", shm_reqres_fname);
         return NULL;
     }
 
@@ -110,7 +110,7 @@ RequestOrResponse *dequeue(queue_t *q)
 
     if (q->size == 0)
     {
-        logger("INFO", "Connection queue empty. Nothing to dequeue." );
+        logger("INFO", "Connection queue empty. Nothing to dequeue.");
         pthread_mutex_unlock(&q->lock);
         return NULL;
     }
@@ -132,7 +132,7 @@ RequestOrResponse *fetch(queue_t *q)
 
     if (q->size == 0)
     {
-        logger("INFO", "Connection queue empty. Nothing to fetch." );
+        logger("INFO", "Connection queue empty. Nothing to fetch.");
         pthread_mutex_unlock(&q->lock);
 
         return NULL;
@@ -158,6 +158,39 @@ int empty(queue_t *q)
     pthread_mutex_unlock(&q->lock);
 
     return 0;
+}
+
+int destroy_queue(queue_t *q)
+{
+    logger("INFO", "Starting queue cleanup");
+    int index;
+    char shm_reqres_fname[MAX_CLIENT_NAME_LEN];
+    while (q->size)
+    {
+        index = q->head;
+        sprintf(shm_reqres_fname, "queue_%d", index);
+
+        logger("DEBUG", "Cleaning node at index %d: %s", index, shm_reqres_fname);
+
+        RequestOrResponse *reqres = dequeue(q);
+
+        detach_memory_block(reqres);
+        destroy_memory_block(shm_reqres_fname);
+
+        logger("INFO", "Deleting file %s", shm_reqres_fname);
+        remove_file(shm_reqres_fname);
+    }
+
+    logger("DEBUG", "Detaching memory block for queue.");
+    detach_memory_block(q);
+
+    logger("DEBUG", "Destroying file of memory block for queue.");
+    destroy_memory_block(CONNECT_CHANNEL_FNAME);
+
+    logger("INFO", "Deleting file %s", CONNECT_CHANNEL_FNAME);
+    remove_file(CONNECT_CHANNEL_FNAME);
+
+    logger("INFO", "Completed queue cleanup");
 }
 
 #endif
