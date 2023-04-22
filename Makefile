@@ -7,7 +7,7 @@ BIN_DIR = bin
 
 CC       = gcc
 CPPFLAGS = -MMD -MP
-CFLAGS 	 = -I./src -O3 -w 
+CFLAGS 	 = -I./src -O3 -Wall -Wextra 
 LDLIBS   = -pthread
 
 
@@ -35,4 +35,4 @@ $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(BIN_DIR)/*.o $(BIN_DIR)/server $(BIN_DIR)/client **/*.log
+	rm -r $(BIN_DIR)/*.o $(BIN_DIR)/server $(BIN_DIR)/client **/*.log

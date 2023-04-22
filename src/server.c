@@ -21,7 +21,7 @@ void handle_sigint(int sig)
     logger("INFO", "Closing logger");
     close_logger();
 
-    exit(EXIT_FAILURE);
+    exit(sig);
 }
 
 int register_client(RequestOrResponse *conn_reqres)
@@ -31,11 +31,13 @@ int register_client(RequestOrResponse *conn_reqres)
     if (comm_channel_exists == 1)
     {
         logger("ERROR", "The client %s already exists. Please try a new client_name", conn_reqres->client_name);
+        set_stage(conn_reqres, 1);
         return -1;
     }
     else if (comm_channel_exists != 0)
     {
         logger("ERROR", "Something went wrong when verify client name (%s) validity. Please debug with other messages.", conn_reqres->client_name);
+        set_stage(conn_reqres, 1);
         return -1;
     }
 
@@ -46,11 +48,11 @@ int register_client(RequestOrResponse *conn_reqres)
     if (args->comm_channel_block_id == IPC_RESULT_ERROR)
     {
         logger("ERROR", "Could not get shared block id for client %s.", args->client_name);
+        set_stage(conn_reqres, 1);
         return -1;
     }
 
     pthread_t client_tid;
-    pthread_attr_t client_tattr;
     pthread_create(&client_tid, NULL, worker_function, args);
 
     conn_reqres->key = ftok(args->client_name, 0);
@@ -60,7 +62,7 @@ int register_client(RequestOrResponse *conn_reqres)
     return 0;
 }
 
-int main(int argc, char **argv)
+int main(int _argc, char **_argv)
 {
     signal(SIGINT, handle_sigint);
 

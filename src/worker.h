@@ -116,7 +116,7 @@ Response handle_is_prime(Request req)
     return res;
 }
 
-Response handle_is_negative(Request req)
+Response handle_is_negative(Request _req)
 {
     Response res;
     res.response_code = RESPONSE_UNSUPPORTED;
@@ -179,6 +179,7 @@ void *worker_function(void *args)
             logger("DEBUG", "[%08x] Removing file %s as a part of deregistration", pthread_self(), ((WorkerArgs *)args)->client_name);
             remove_file(((WorkerArgs *)args)->client_name);
 
+            set_stage(comm_reqres, 0); // ? Is this required?
             logger("INFO", "[%08x] Deregistration of client %s succesful", pthread_self(), ((WorkerArgs *)args)->client_name);
 
             break;

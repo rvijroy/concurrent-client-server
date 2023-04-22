@@ -83,19 +83,18 @@ void *attach_memory_block(const char *filename, size_t size)
     return attach_with_shared_block_id(shared_block_id);
 }
 
-bool detach_memory_block(const void *block)
+int detach_memory_block(const void *block)
 {
-    return (shmdt(block) != IPC_RESULT_ERROR);
+    return shmdt(block);
 }
 
-bool destroy_memory_block(const char *filename)
+int destroy_memory_block(const char *filename)
 {
     int shared_block_id = get_shared_block(filename, 0);
-
     if (shared_block_id == IPC_RESULT_ERROR)
-        return false;
+        return IPC_RESULT_ERROR;
 
-    return shmctl(shared_block_id, IPC_RMID, NULL) != IPC_RESULT_ERROR;
+    return shmctl(shared_block_id, IPC_RMID, NULL);
 }
 
 void clear_memory_block(void *block, size_t size)
