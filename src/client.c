@@ -20,6 +20,12 @@ int connect_to_server(const char *client_name)
 
     logger("INFO", "Sending register request to server with name %s", client_name);
     RequestOrResponse *conn_reqres = post(conn_q, client_name);
+    if (conn_reqres == NULL)
+    {
+        logger("ERROR", "Could not get personal connection channel to connect to server. Registration failed.");
+        return -1;
+    }
+
     wait_until_stage(conn_reqres, 1);
 
     if (conn_reqres->res.response_code != RESPONSE_SUCCESS)
@@ -29,12 +35,12 @@ int connect_to_server(const char *client_name)
     }
 
     int key = conn_reqres->res.result;
+    logger("DEBUG", "Succesfully connected to the server and received key %d", key);
 
     logger("INFO", "Cleaning up the personal connection channel");
     if (destroy_node(conn_reqres) == -1)
         logger("WARN", "Personal connection channel could not be cleaned up succesfully.");
 
-    logger("INFO", "Succesfully connected to the server and received key %d", key);
     return key;
 }
 

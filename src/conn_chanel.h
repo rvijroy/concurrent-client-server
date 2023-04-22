@@ -79,7 +79,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     RequestOrResponse *shm_req_or_res = (RequestOrResponse *)attach_with_shared_block_id(req_or_res_block_id);
     if (shm_req_or_res == NULL)
     {
-        logger("ERROR", "Could not create shared memory block %s for the queue.", shm_reqres_fname);
+        logger("ERROR", "Could not create shared memory block %s for the personal connection channel.", shm_reqres_fname);
         return NULL;
     }
 
