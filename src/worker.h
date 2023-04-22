@@ -20,6 +20,23 @@
 
 #define TEMP_CLIENT_SIZE (1024)
 
+static unsigned long total_serviced_requests = 0;
+static pthread_mutex_t tsr_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+int increment_service_requests()
+{
+    pthread_mutex_lock(&tsr_mutex);
+    total_serviced_requests++;
+    pthread_mutex_unlock(&tsr_mutex);
+
+    return total_serviced_requests;
+}
+
+int get_total_serviced_requests()
+{
+    return total_serviced_requests;
+}
+
 typedef struct WorkerArgs
 {
     char client_name[MAX_CLIENT_NAME_LEN];
@@ -108,8 +125,12 @@ Response handle_is_negative(Request req)
 
 void *worker_function(void *args)
 {
+    logger("DEBUG", "[%08x] Setting up communication channel for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
     int comm_channel_block_id = ((WorkerArgs *)args)->comm_channel_block_id;
     RequestOrResponse *comm_reqres = get_comm_channel(comm_channel_block_id);
+    logger("INFO", "[%08x] Communication channel setup succesful for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+
+    unsigned long thread_tsr = 0;
 
     if (comm_reqres == NULL)
     {
@@ -155,12 +176,19 @@ void *worker_function(void *args)
             detach_memory_block(comm_reqres);
             destroy_memory_block(((WorkerArgs *)args)->client_name); // TODO: Refactor this out.
 
-            logger("INFO", "[%08x] Removing file %s as a part of deregistration", pthread_self(), ((WorkerArgs *)args)->client_name);
+            logger("DEBUG", "[%08x] Removing file %s as a part of deregistration", pthread_self(), ((WorkerArgs *)args)->client_name);
             remove_file(((WorkerArgs *)args)->client_name);
+
+            logger("INFO", "[%08x] Deregistration of client %s succesful", pthread_self(), ((WorkerArgs *)args)->client_name);
 
             break;
         }
+
+        logger("INFO", "[%08x] Thread Total serviced requests: %d", pthread_self(), ++thread_tsr);
+        logger("INFO", "[%08x] Total serviced requests: %d", pthread_self(), increment_service_requests());
         next_stage(comm_reqres);
+
+        logger("INFO", "[%08x] Response sent to client for request with response code %d", pthread_self(), comm_reqres->res.response_code);
         msleep(600);
     }
 

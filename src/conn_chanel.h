@@ -27,6 +27,7 @@ typedef struct queue_t
 
 queue_t *create_queue()
 {
+    logger("DEBUG", "Initialising connection channel queue");
     create_file_if_does_not_exist(CONNECT_CHANNEL_FNAME);
     queue_t *q = (queue_t *)attach_memory_block(CONNECT_CHANNEL_FNAME, sizeof(queue_t));
 
@@ -45,6 +46,7 @@ queue_t *create_queue()
     q->tail = 0;
     q->size = 0;
 
+    logger("INFO", "Connection channel queue creation succesful");
     return q;
 }
 

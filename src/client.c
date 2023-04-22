@@ -18,9 +18,11 @@ int connect_to_server(const char *client_name)
         exit(EXIT_FAILURE);
     }
 
+    logger("INFO", "Sending register request to server with name %s", client_name);
     RequestOrResponse *conn_reqres = post(conn_q, client_name);
     wait_until_stage(conn_reqres, 1);
 
+    logger("INFO", "Succesfully connected to the server and received key %d", conn_reqres->key);
     return conn_reqres->key;
 }
 
@@ -29,6 +31,8 @@ int communicate(const char *client_name, int key)
     RequestOrResponse *comm_reqres = get_req_or_res(client_name);
     if (comm_reqres == NULL)
         return -1;
+
+    logger("DEBUG", "Obtained communication channel succesfully");
 
     int n1, n2;
     char op;
@@ -49,6 +53,7 @@ int communicate(const char *client_name, int key)
         current_choice = EVEN_OR_ODD;
 #endif
 
+        logger("DEBUG", "Sending request of type %d to server", current_choice);
         if (current_choice == ARITHMETIC)
         {
 #ifndef DEBUGGER
@@ -63,6 +68,9 @@ int communicate(const char *client_name, int key)
             comm_reqres->req.n1 = n1;
             comm_reqres->req.n2 = n2;
             comm_reqres->req.op = op;
+
+            logger("DEBUG", "Sending request of type %d to server with params: n1: %d op: %c n2: %d", current_choice, n1, op, n2);
+
             next_stage(comm_reqres);
         }
 
@@ -77,6 +85,9 @@ int communicate(const char *client_name, int key)
 
             comm_reqres->req.request_type = EVEN_OR_ODD;
             comm_reqres->req.n1 = n1;
+
+            logger("DEBUG", "Sending request of type %d to server with params: n1: %d", current_choice, n1);
+
             next_stage(comm_reqres);
         }
 
@@ -91,6 +102,9 @@ int communicate(const char *client_name, int key)
 #endif
             comm_reqres->req.request_type = IS_PRIME;
             comm_reqres->req.n1 = n1;
+
+            logger("DEBUG", "Sending request of type %d to server with params: n1: %d", current_choice, n1);
+
             next_stage(comm_reqres);
         }
 
@@ -105,6 +119,9 @@ int communicate(const char *client_name, int key)
 #endif
             comm_reqres->req.request_type = IS_NEGATIVE;
             comm_reqres->req.n1 = n1;
+
+            logger("DEBUG", "Sending request of type %d to server with params: n1: %d", current_choice, n1);
+
             next_stage(comm_reqres);
         }
 
@@ -113,6 +130,9 @@ int communicate(const char *client_name, int key)
             printf("Unregistering...\n");
             logger("INFO", "Initiating unregister");
             comm_reqres->req.request_type = UNREGISTER;
+
+            logger("DEBUG", "Sending request of type %d to server", current_choice);
+
             next_stage(comm_reqres);
             break;
         }
@@ -120,17 +140,20 @@ int communicate(const char *client_name, int key)
         else // DON'T DO ANYTHING AND EXIT
         {
             // TODO: Check if synch is required here.
-            logger("WARN", "Input was invalid. Just exiting.");
+            logger("WARN", "Input was invalid. Exiting without cleaning up or deregistering");
             next_stage(comm_reqres);
             break;
         }
 
         wait_until_stage(comm_reqres, 2);
+
+        logger("INFO", "Received response from server with status code: %d", comm_reqres->res.response_code);
+
         if (comm_reqres->res.response_code == RESPONSE_SUCCESS)
             printf("Result: %d\n", comm_reqres->res.result);
 
         else if (comm_reqres->res.response_code == RESPONSE_UNSUPPORTED)
-            logger("ERROR", "Unsupported request");
+            logger("ERROR", "Unsupported request. Try another.");
 
         else if (comm_reqres->res.response_code == RESPONSE_UNKNOWN_FAILURE)
             logger("ERROR", "Unknown failure");
@@ -170,7 +193,6 @@ int main(int argc, char **argv)
     }
 
     int key = connect_to_server(client_name);
-    printf("Received key: %d\n. Connection Established succesfully.\n", key);
     communicate(client_name, key);
 
     close_logger();
