@@ -146,7 +146,17 @@ void *worker_function(void *args)
         wait_until_stage(comm_reqres, 1);
         logger("INFO", "[%08x] Received request of type %d", pthread_self(), comm_reqres->req.request_type);
 
-        if (comm_reqres->req.request_type == ARITHMETIC)
+        // TODO: Error handling and logging
+        if (validate_key_client(comm_reqres->req.key, ((WorkerArgs *)args)->client_name) < 0)
+        {
+            // TODO: Test this somehow?
+            logger("INFO", "[%08x] Authentication failed for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+            Response res;
+            res.response_code = RESPONSE_UNAUTHORIZED;
+            comm_reqres->res = res;
+        }
+
+        else if (comm_reqres->req.request_type == ARITHMETIC)
         {
             Response res = handle_arithmetic(comm_reqres->req);
             comm_reqres->res = res;
@@ -170,6 +180,9 @@ void *worker_function(void *args)
         {
             logger("INFO", "[%08x] Initiating deregister of client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
+
+            // TODO: Error handling and logging
+            remove_from_client_tree(comm_reqres->req.key);
 
             char *filename = strdup(comm_reqres->filename);
 

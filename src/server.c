@@ -10,6 +10,7 @@
 #include "worker.h"
 #include "logger.h"
 #include "conn_chanel.h"
+#include "client_tree.h"
 
 static queue_t *conn_q;
 
@@ -64,8 +65,13 @@ int register_client(RequestOrResponse *conn_reqres)
     pthread_t client_tid;
     pthread_create(&client_tid, NULL, worker_function, args);
 
+    int key = ftok(args->client_name, 0);
+
+    // TODO: Error handling
+    insert_to_client_tree(key, conn_reqres->client_name); 
+
     conn_reqres->res.response_code = RESPONSE_SUCCESS;
-    conn_reqres->res.result = ftok(args->client_name, 0);
+    conn_reqres->res.result = key;
     logger("INFO", "Client registered succesfully with key: %d", conn_reqres->res.result);
 
     set_stage(conn_reqres, 1);
@@ -85,6 +91,8 @@ int main(int _argc, char **_argv)
         logger("ERROR", "Could not create connection queue.");
         exit(EXIT_FAILURE);
     }
+
+    init_client_tree();
 
     printf("Started server. Waiting for requests...\n");
     fflush(stdout);
@@ -114,6 +122,7 @@ int main(int _argc, char **_argv)
             }
         }
 
+        logger("INFO", "Number of connected clients: %d", get_num_connected_clients());
         msleep(400);
     }
 

@@ -43,7 +43,7 @@ const size_t get_num_connected_clients()
     return tree->size;
 }
 
-client_tree_t *init_tree()
+client_tree_t *init_client_tree()
 {
     logger("DEBUG", "Initialising client tree");
     if (tree)
@@ -60,7 +60,7 @@ client_tree_t *init_tree()
     return tree;
 }
 
-int insert(int key, char *client_name)
+int insert_to_client_tree(int key, char *client_name)
 {
     pthread_mutex_lock(&tree_mutex);
 
@@ -106,7 +106,7 @@ int insert(int key, char *client_name)
     return 0;
 }
 
-int validate(int key, const char *client_name)
+int validate_key_client(int key, const char *client_name)
 {
     pthread_mutex_lock(&tree_mutex);
 
@@ -138,7 +138,7 @@ int validate(int key, const char *client_name)
     return 0;
 }
 
-int remove(int key)
+int remove_from_client_tree(int key)
 {
     pthread_mutex_lock(&tree_mutex);
 
@@ -247,5 +247,7 @@ int remove(int key)
     pthread_mutex_unlock(&tree_mutex);
     return 0;
 }
+
+// TODO: Cleanup tree function.
 
 #endif
