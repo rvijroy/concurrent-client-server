@@ -21,7 +21,7 @@ typedef struct queue_t
     pthread_mutex_t lock;
     int head;
     int tail;
-    int size;
+    size_t size;
     node_t nodes[MAX_QUEUE_LEN];
 } queue_t;
 
