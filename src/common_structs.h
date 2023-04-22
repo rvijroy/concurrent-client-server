@@ -82,6 +82,8 @@ int create_comm_channel(const char *client_name)
         return IPC_RESULT_ERROR;
 
     comm_channel->stage = 0;
+    strncpy(comm_channel->filename, client_name, MAX_CLIENT_NAME_LEN);
+
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);

@@ -172,15 +172,15 @@ void *worker_function(void *args)
             logger("INFO", "[%08x] Initiating deregister of client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
 
+            char *filename = strdup(comm_reqres->filename);
+
             detach_memory_block(comm_reqres);
-            destroy_memory_block(((WorkerArgs *)args)->client_name); // TODO: Refactor this out.
+            destroy_memory_block(filename);
 
-            logger("DEBUG", "[%08x] Removing file %s as a part of deregistration", pthread_self(), ((WorkerArgs *)args)->client_name);
-            remove_file(((WorkerArgs *)args)->client_name);
+            logger("DEBUG", "[%08x] Removing file %s as a part of deregistration", pthread_self(), filename);
+            remove_file(filename);
 
-            set_stage(comm_reqres, 0); // ? Is this required?
             logger("INFO", "[%08x] Deregistration of client %s succesful", pthread_self(), ((WorkerArgs *)args)->client_name);
-
             break;
         }
 
