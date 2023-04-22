@@ -56,7 +56,6 @@ static int get_shared_block(const char *filename, size_t size)
     return shared_block_id;
 }
 
-// TODO: Add parameter of preferred memory address?
 void *attach_with_shared_block_id(int shared_block_id)
 {
     // map the shared block into this process's memory
@@ -85,7 +84,17 @@ void *attach_memory_block(const char *filename, size_t size)
 
 int detach_memory_block(const void *block)
 {
-    return shmdt(block);
+    int result = shmdt(block);
+    if (result == IPC_RESULT_ERROR)
+    {
+        if (errno == EINVAL)
+            logger("ERROR", "Failed to detach connection memory block. The address passed is not the start address of a mapped shared memory segment.");
+        else
+            logger("ERROR", "Failed to detach connection memory block. Unknown error occured.");
+        return IPC_RESULT_ERROR;
+    }
+
+    return result;
 }
 
 int destroy_memory_block(const char *filename)
@@ -94,7 +103,23 @@ int destroy_memory_block(const char *filename)
     if (shared_block_id == IPC_RESULT_ERROR)
         return IPC_RESULT_ERROR;
 
-    return shmctl(shared_block_id, IPC_RMID, NULL);
+    int result = shmctl(shared_block_id, IPC_RMID, NULL);
+    if (result == IPC_RESULT_ERROR)
+    {
+        if (errno == EACCES)
+            logger("ERROR", "Failed to destroy connection memory block %s. The command is IPC_STAT and the caller has no read permission for this shared memory segment.", filename);
+        if (errno == EFAULT)
+            logger("ERROR", "Failed to destroy connection memory block %s. `buf` specifies an invalid address", filename);
+        if (errno == EINVAL)
+            logger("ERROR", "Failed to destroy connection memory block %s. `shmid` is not a valid shared memory segment identifier or `cmd` is not a valid command.", filename);
+        if (errno == EPERM)
+            logger("ERROR", "Failed to destroy connection memory block %s. User does not have the permissions required to carry out the specified action.", filename);
+        else
+            logger("ERROR", "Failed to destroy connection memory block %s. Unknown error occured.", filename);
+        return IPC_RESULT_ERROR;
+    }
+
+    return result;
 }
 
 void clear_memory_block(void *block, size_t size)

@@ -22,8 +22,14 @@ int connect_to_server(const char *client_name)
     RequestOrResponse *conn_reqres = post(conn_q, client_name);
     wait_until_stage(conn_reqres, 1);
 
-    logger("INFO", "Succesfully connected to the server and received key %d", conn_reqres->key);
-    return conn_reqres->key;
+    int key = conn_reqres->key;
+
+    logger("INFO", "Cleaning up the personal connection channel");
+    if (destroy_node(conn_reqres) == -1)
+        logger("WARN", "Personal connection channel could not be cleaned up succesfully.");
+
+    logger("INFO", "Succesfully connected to the server and received key %d", key);
+    return key;
 }
 
 int communicate(const char *client_name, int key)
@@ -36,9 +42,6 @@ int communicate(const char *client_name, int key)
 
     int n1, n2;
     char op;
-
-    // TODO: Handle req seq numbers.
-    // TODO: Handle res seq numbers.
 
     int current_choice = 0;
     while (true)
@@ -139,9 +142,8 @@ int communicate(const char *client_name, int key)
 
         else // DON'T DO ANYTHING AND EXIT
         {
-            // TODO: Check if synch is required here.
             logger("WARN", "Input was invalid. Exiting without cleaning up or deregistering");
-            next_stage(comm_reqres);
+            next_stage(comm_reqres); // ? Fix this
             break;
         }
 

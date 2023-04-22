@@ -48,6 +48,7 @@ typedef struct RequestOrResponse
 {
     pthread_mutex_t lock;
     char client_name[MAX_CLIENT_NAME_LEN];
+    char filename[MAX_CLIENT_NAME_LEN];
     int stage;
     int key;
     Request req;

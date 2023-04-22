@@ -90,6 +90,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     pthread_mutexattr_destroy(&attr);
 
     strncpy(shm_req_or_res->client_name, client_name, MAX_CLIENT_NAME_LEN);
+    strncpy(shm_req_or_res->filename, shm_reqres_fname, MAX_CLIENT_NAME_LEN);
     shm_req_or_res->stage = 0;
 
     // ? Does the nodes req_or_res pointer point to the same shared memory object
@@ -142,10 +143,6 @@ RequestOrResponse *fetch(queue_t *q)
 
     int req_or_res_block_id = q->nodes[q->head].req_or_res_block_id;
 
-    // TODO: Preferably attach memory block at the original location we had specified. If not, that is fine as well.
-    // RequestOrResponse *req_or_res = q->nodes[q->head].req_or_res;
-    // req_or_res = attach_with_shared_block_id(req_or_res_block_id, req_or_res);
-
     RequestOrResponse *req_or_res = attach_with_shared_block_id(req_or_res_block_id);
     pthread_mutex_unlock(&q->lock);
 
@@ -160,6 +157,41 @@ int empty(queue_t *q)
     pthread_mutex_unlock(&q->lock);
 
     return 0;
+}
+
+int destroy_node(RequestOrResponse *reqres)
+{
+
+    char filename[MAX_CLIENT_NAME_LEN];
+    strncpy(filename, reqres->filename, MAX_CLIENT_NAME_LEN);
+
+    if (pthread_mutex_destroy(&reqres->lock) != 0)
+    {
+        if (errno == EINVAL)
+            logger("ERROR", "Failed to destroy mutex on connection block %s used by client %s. The value specified by the mutex is invalid", filename, reqres->client_name);
+
+        else if (errno == EBUSY)
+            logger("ERROR", "Failed to destroy mutex on connection block %s used by client %s. The mutex is locked", filename, reqres->client_name);
+
+        else
+            logger("ERROR", "Failed to destroy mutex on connection block %s used by client %s. Unknown error occured", filename, reqres->client_name);
+
+        return -1;
+    }
+
+    if (detach_memory_block(reqres) == IPC_RESULT_ERROR)
+    {
+        logger("ERROR", "Failed to detach connection memory block %s used by client %s", filename, reqres->client_name);
+        return -1;
+    }
+
+    if (destroy_memory_block(filename) == IPC_RESULT_ERROR)
+    {
+        logger("ERROR", "Failed to destroy connection memory block %s used by client %s", filename, reqres->client_name);
+        return -1;
+    }
+
+    return remove_file(filename);
 }
 
 int destroy_queue(queue_t *q)
@@ -193,6 +225,8 @@ int destroy_queue(queue_t *q)
     remove_file(CONNECT_CHANNEL_FNAME);
 
     logger("INFO", "Completed queue cleanup");
+
+    return 0;
 }
 
 #endif

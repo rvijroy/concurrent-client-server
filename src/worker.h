@@ -169,7 +169,6 @@ void *worker_function(void *args)
         }
         else if (comm_reqres->req.request_type == UNREGISTER)
         {
-            // TODO: Cleanup if deregister
             logger("INFO", "[%08x] Initiating deregister of client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
 
