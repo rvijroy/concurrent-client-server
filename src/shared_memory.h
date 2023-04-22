@@ -24,7 +24,6 @@ static int get_shared_block(const char *filename, size_t size)
     // Request a key
     // key is linked to a filename so that other programs can access it
     key_t key = ftok(filename, 0);
-
     if (key == IPC_RESULT_ERROR)
     {
         logger("ERROR", "File %s does not exist, or can not be accesses. Verify its existence and permissions.", filename);
@@ -36,19 +35,19 @@ static int get_shared_block(const char *filename, size_t size)
     if (shared_block_id == IPC_RESULT_ERROR)
     {
         if (errno == EACCES)
-            logger("ERROR", "shmget failed with code EACCESS.");
+            logger("ERROR", "EACCES: shmget failed with code EACCESS.");
         else if (errno == EEXIST)
-            logger("ERROR", "shmget failed with code EEXIST.");
+            logger("ERROR", "EEXIST: shmget failed with code EEXIST.");
         else if (errno == EINVAL)
-            logger("ERROR", "shmget failed with code EINVAL.");
+            logger("ERROR", "EINVAL: shmget failed with code EINVAL.");
         else if (errno == ENOENT)
-            logger("ERROR", "shmget failed with code ENOENT.");
+            logger("ERROR", "ENOENT: shmget failed with code ENOENT.");
         else if (errno == ENOMEM)
-            logger("ERROR", "shmget failed with code ENOMEM.");
+            logger("ERROR", "ENOMEM: shmget failed with code ENOMEM.");
         else if (errno == ENOSPC)
-            logger("ERROR", "shmget failed with code ENOSPC.");
+            logger("ERROR", "ENOSPC: shmget failed with code ENOSPC.");
         else
-            logger("ERROR", "wtf.");
+            logger("ERROR", "Unknown error occured.");
 
         return IPC_RESULT_ERROR;
     }
@@ -63,7 +62,18 @@ void *attach_with_shared_block_id(int shared_block_id)
     void *block = shmat(shared_block_id, NULL, 0);
     if (block == (void *)IPC_RESULT_ERROR)
     {
-        logger("ERROR", "Could not attached to shared memory block with block_id: %d", shared_block_id);
+
+        if (errno == EACCES)
+            logger("ERROR", "EACCES: Could not attach to shared memory block with block_id: %d. User does not have permission to access this shared memory segment.", shared_block_id);
+        else if (errno == EINVAL)
+            logger("ERROR", "EINVAL: Could not attach to shared memory block with block_id: %d. `shmid` is not a valid shared memory identifier or `shmaddr` specifies an illegal address.", shared_block_id);
+        else if (errno == EMFILE)
+            logger("ERROR", "EMFILE: Could not attach to shared memory block with block_id: %d. The number of shared memory segments has reached the system-wide limit.", shared_block_id);
+        else if (errno == ENOMEM)
+            logger("ERROR", "ENOMEM: Could not attach to shared memory block with block_id: %d. There is not enough available data space for the calling process to map the shared memory segment.", shared_block_id);
+        else
+            logger("ERROR", "Could not attach to shared memory block with block_id: %d. Unknown error occured.", shared_block_id);
+
         return NULL;
     }
 
@@ -88,7 +98,7 @@ int detach_memory_block(const void *block)
     if (result == IPC_RESULT_ERROR)
     {
         if (errno == EINVAL)
-            logger("ERROR", "Failed to detach connection memory block. The address passed is not the start address of a mapped shared memory segment.");
+            logger("ERROR", "EINVAL: Failed to detach connection memory block. The address passed is not the start address of a mapped shared memory segment.");
         else
             logger("ERROR", "Failed to detach connection memory block. Unknown error occured.");
         return IPC_RESULT_ERROR;
@@ -107,13 +117,13 @@ int destroy_memory_block(const char *filename)
     if (result == IPC_RESULT_ERROR)
     {
         if (errno == EACCES)
-            logger("ERROR", "Failed to destroy connection memory block %s. The command is IPC_STAT and the caller has no read permission for this shared memory segment.", filename);
-        if (errno == EFAULT)
-            logger("ERROR", "Failed to destroy connection memory block %s. `buf` specifies an invalid address", filename);
-        if (errno == EINVAL)
-            logger("ERROR", "Failed to destroy connection memory block %s. `shmid` is not a valid shared memory segment identifier or `cmd` is not a valid command.", filename);
-        if (errno == EPERM)
-            logger("ERROR", "Failed to destroy connection memory block %s. User does not have the permissions required to carry out the specified action.", filename);
+            logger("ERROR", "EACCES: Failed to destroy connection memory block %s. The command is IPC_STAT and the caller has no read permission for this shared memory segment.", filename);
+        else if (errno == EFAULT)
+            logger("ERROR", "EFAULT: Failed to destroy connection memory block %s. `buf` specifies an invalid address", filename);
+        else if (errno == EINVAL)
+            logger("ERROR", "EINVAL: Failed to destroy connection memory block %s. `shmid` is not a valid shared memory segment identifier or `cmd` is not a valid command.", filename);
+        else if (errno == EPERM)
+            logger("ERROR", "EPERM: Failed to destroy connection memory block %s. User does not have the permissions required to carry out the specified action.", filename);
         else
             logger("ERROR", "Failed to destroy connection memory block %s. Unknown error occured.", filename);
         return IPC_RESULT_ERROR;

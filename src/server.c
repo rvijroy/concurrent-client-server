@@ -82,6 +82,9 @@ int main(int _argc, char **_argv)
         exit(EXIT_FAILURE);
     }
 
+    printf("Started server. Waiting for requests...\n");
+    fflush(stdout);
+    
     while (true)
     {
 
