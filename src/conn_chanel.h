@@ -93,11 +93,6 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     strncpy(shm_req_or_res->filename, shm_reqres_fname, MAX_CLIENT_NAME_LEN);
     shm_req_or_res->stage = 0;
 
-    // ? Does the nodes req_or_res pointer point to the same shared memory object
-    // ? across proceeses ?
-
-    // ? It is the same value for the pointer. Which means, the memcpy of the client_name did not occur properly.
-    // q->nodes[q->tail].req_or_res = shm_req_or_res;
     q->nodes[q->tail].req_or_res_block_id = req_or_res_block_id;
 
     q->tail = (q->tail + 1) % MAX_QUEUE_LEN;
@@ -119,10 +114,19 @@ RequestOrResponse *dequeue(queue_t *q)
     }
 
     int req_or_res_block_id = q->nodes[q->head].req_or_res_block_id;
-    RequestOrResponse *req_or_res = attach_with_shared_block_id(req_or_res_block_id);
 
+    // Whether we are able to delete the node or not, the connection request no longer remains valid
+    // if a shared memory block can not be attached to it. Ideally, this should not be possible.
+    // But it seems, that it is infact, very possible.
     q->head = (q->head + 1) % MAX_QUEUE_LEN;
     q->size -= 1;
+
+    RequestOrResponse *req_or_res = attach_with_shared_block_id(req_or_res_block_id);
+    if (req_or_res == NULL)
+    {
+        logger("ERROR", "Could not dequeue and get shared block.");
+        return (void*)-1;
+    }
 
     pthread_mutex_unlock(&q->lock);
 
@@ -162,6 +166,13 @@ int empty(queue_t *q)
 int destroy_node(RequestOrResponse *reqres)
 {
 
+    logger("INFO", "Starting cleanup of node");
+    if (reqres == NULL)
+    {
+        logger("ERROR", "Failed to destroy connection memory block. Null pointer was passed");
+        return -1;
+    }
+
     char filename[MAX_CLIENT_NAME_LEN];
     strncpy(filename, reqres->filename, MAX_CLIENT_NAME_LEN);
 
@@ -191,28 +202,24 @@ int destroy_node(RequestOrResponse *reqres)
         return -1;
     }
 
+    logger("INFO", "Deleting file %s", filename);
     return remove_file(filename);
 }
 
 int destroy_queue(queue_t *q)
 {
     logger("INFO", "Starting queue cleanup");
-    int index;
-    char shm_reqres_fname[MAX_CLIENT_NAME_LEN];
     while (q->size)
     {
-        index = q->head;
-        sprintf(shm_reqres_fname, "queue_%d", index);
+        logger("DEBUG", "Cleaning node at index %d", q->head);
 
-        logger("DEBUG", "Cleaning node at index %d: %s", index, shm_reqres_fname);
+        RequestOrResponse *reqres = dequeue(q); // ! What if dequeue returns NULL or -1. > Null occurs only when queue is empty. Should not occur in this case.
+        if (reqres == (void *)(-1))
+        {
+            break;
+        }
 
-        RequestOrResponse *reqres = dequeue(q);
-
-        detach_memory_block(reqres);
-        destroy_memory_block(shm_reqres_fname);
-
-        logger("INFO", "Deleting file %s", shm_reqres_fname);
-        remove_file(shm_reqres_fname);
+        destroy_node(reqres);
     }
 
     logger("DEBUG", "Detaching memory block for queue.");

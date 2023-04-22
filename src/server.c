@@ -13,14 +13,18 @@
 
 static queue_t *conn_q;
 
-void handle_sigint(int sig)
+void cleanup()
 {
     logger("INFO", "Starting cleanup.");
     destroy_queue(conn_q);
 
     logger("INFO", "Closing logger");
     close_logger();
+}
 
+void handle_sigint(int sig)
+{
+    cleanup();
     exit(sig);
 }
 
@@ -84,7 +88,7 @@ int main(int _argc, char **_argv)
 
     printf("Started server. Waiting for requests...\n");
     fflush(stdout);
-    
+
     while (true)
     {
 
@@ -92,6 +96,13 @@ int main(int _argc, char **_argv)
         // ? Consequently, we don't need to keep the request on the queue.
         // ? Any updates required can be done directly on the shared memory buffer.
         RequestOrResponse *conn_reqres = dequeue(conn_q);
+        if (conn_reqres == (void *)-1)
+        {
+            logger("ERROR", "Failed to dequeue. System has probably run out of resources to create more shared memory blocks. Closing server...");
+            printf("System might have run out of resources. Closing the server...");
+            break;
+        }
+
         // RequestOrResponse *conn_reqres = fetch(conn_q);
         if (conn_reqres)
         {
@@ -106,7 +117,6 @@ int main(int _argc, char **_argv)
         msleep(400);
     }
 
-    close_logger();
-
+    cleanup();
     return 0;
 }
