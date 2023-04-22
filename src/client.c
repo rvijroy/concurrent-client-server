@@ -26,7 +26,7 @@ int connect_to_server(const char *client_name)
         return -1;
     }
 
-    wait_until_stage(conn_reqres, 1);
+    wait_until_stage(conn_reqres, 1); // TODO: Use a timed wait here.
 
     if (conn_reqres->res.response_code != RESPONSE_SUCCESS)
     {
@@ -167,7 +167,7 @@ int communicate(const char *client_name, int key)
             break;
         }
 
-        wait_until_stage(comm_reqres, 2);
+        wait_until_stage(comm_reqres, 2); // TODO: Use a timed wait here as well.
 
         logger("INFO", "Received response from server with status code: %d", comm_reqres->res.response_code);
 

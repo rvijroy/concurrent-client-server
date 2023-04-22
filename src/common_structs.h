@@ -93,6 +93,7 @@ int create_comm_channel(const char *client_name)
     return comm_channel_block_id;
 }
 
+// TODO: Make this a timed wait. Such that, if wait time exceeds a certain duration, kill the wait with a failed state.
 void wait_until_stage(RequestOrResponse *req_or_res, int stage)
 {
     bool reached_stage = false;
