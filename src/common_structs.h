@@ -48,11 +48,18 @@ typedef struct Response
 
 typedef struct RequestOrResponse
 {
+    /* Synchronization structures */
     pthread_mutex_t lock;
+    int stage;
+
+    /* Utility variables */
     char client_name[MAX_CLIENT_NAME_LEN];
     char filename[MAX_CLIENT_NAME_LEN];
-    int stage;
+
+    /* Request Object */
     Request req;
+
+    /* Response Object */
     Response res;
 } RequestOrResponse;
 

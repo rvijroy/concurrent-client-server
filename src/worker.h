@@ -186,6 +186,9 @@ void *worker_function(void *args)
 
             char *filename = strdup(comm_reqres->filename);
 
+            // ? Do you need to clear mutex?.
+            pthread_mutex_destroy(comm_reqres->lock);
+
             detach_memory_block(comm_reqres);
             destroy_memory_block(filename);
 

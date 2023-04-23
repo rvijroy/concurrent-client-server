@@ -69,6 +69,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     {
         logger("ERROR", "Could not enqueue to connection queue. Connection queue is full.");
         pthread_mutex_unlock(&q->lock);
+        return NULL;
     }
 
     char shm_reqres_fname[MAX_CLIENT_NAME_LEN];
@@ -80,6 +81,7 @@ RequestOrResponse *post(queue_t *q, const char *client_name)
     if (shm_req_or_res == NULL)
     {
         logger("ERROR", "Could not create shared memory block %s for the personal connection channel.", shm_reqres_fname);
+        pthread_mutex_unlock(&q->lock);
         return NULL;
     }
 
@@ -125,7 +127,7 @@ RequestOrResponse *dequeue(queue_t *q)
     if (req_or_res == NULL)
     {
         logger("ERROR", "Could not dequeue and get shared block.");
-        return (void*)-1;
+        return (void *)(-1);
     }
 
     pthread_mutex_unlock(&q->lock);

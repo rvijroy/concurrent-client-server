@@ -48,7 +48,10 @@ int communicate(const char *client_name, int key)
 {
     RequestOrResponse *comm_reqres = get_req_or_res(client_name);
     if (comm_reqres == NULL)
+    {
+        // TODO: Add logging
         return -1;
+    }
 
     // We don't set key here, but while making request,
     // since we can never be sure if the server tampered with the key
