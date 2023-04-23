@@ -14,12 +14,15 @@
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *log_file;
 
-void logger(const char *code, const char *format, ...)
+static void internal_logger(const char *code, const char *source_file, const char *calling_function, int line_number, const char *format, ...)
 {
     time_t t = time(NULL);
     struct tm *lt = localtime(&t);
     char timestamp[32];
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%d %H:%M:%S", lt);
+
+    pid_t pid = getpid();
+    unsigned int tid = (unsigned long)pthread_self();
 
     va_list args;
     va_start(args, format);
@@ -28,13 +31,19 @@ void logger(const char *code, const char *format, ...)
     va_end(args);
 
     char final_msg[MAX_LOG_MSG_SIZE];
-    snprintf(final_msg, MAX_LOG_MSG_SIZE, "%s %s %s\n", code, timestamp, log_msg);
+    snprintf(final_msg, MAX_LOG_MSG_SIZE, "%s %s (%s:%d) [%d:%08x] %s \"%s\"\n", code, timestamp, source_file, line_number, pid, tid, calling_function, log_msg);
 
     pthread_mutex_lock(&log_mutex);
     fputs(final_msg, log_file);
     fflush(log_file);
     pthread_mutex_unlock(&log_mutex);
 }
+
+#define logger(code, format, ...)                                                  \
+    do                                                                             \
+    {                                                                              \
+        internal_logger(code, __FILE__, __func__, __LINE__, format, ##__VA_ARGS__); \
+    } while (0)
 
 int close_logger()
 {

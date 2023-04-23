@@ -9,6 +9,7 @@
 
 #include "logger.h"
 #include "common_structs.h"
+#include "client_tree.h"
 
 #define CONNECT_CHANNEL_FNAME "srv_conn_channel"
 #define CONNECT_CHANNEL_SIZE (1024)
@@ -125,32 +126,32 @@ Response handle_is_negative(Request _req)
 
 void *worker_function(void *args)
 {
-    logger("DEBUG", "[%08x] Setting up communication channel for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+    logger("DEBUG", "Setting up communication channel for client %s",  ((WorkerArgs *)args)->client_name);
     int comm_channel_block_id = ((WorkerArgs *)args)->comm_channel_block_id;
 
     RequestOrResponse *comm_reqres = get_comm_channel(comm_channel_block_id);
     if (comm_reqres == NULL)
     {
-        logger("ERROR", "[%08x] Invalid comm channel block id provided. Could not get communication channel block.", pthread_self());
+        logger("ERROR", "Invalid comm channel block id provided. Could not get communication channel block.", pthread_self());
 
         free(args);
         args = NULL;
 
         pthread_exit(NULL);
     }
-    logger("INFO", "[%08x] Communication channel setup succesful for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+    logger("INFO", "Communication channel setup succesful for client %s",  ((WorkerArgs *)args)->client_name);
 
     unsigned long thread_tsr = 0;
     while (true)
     {
         wait_until_stage(comm_reqres, 1);
-        logger("INFO", "[%08x] Received request of type %d", pthread_self(), comm_reqres->req.request_type);
+        logger("INFO", "Received request of type %d",  comm_reqres->req.request_type);
 
         // TODO: Error handling and logging
         if (validate_key_client(comm_reqres->req.key, ((WorkerArgs *)args)->client_name) < 0)
         {
             // TODO: Test this somehow?
-            logger("INFO", "[%08x] Authentication failed for client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+            logger("INFO", "Authentication failed for client %s",  ((WorkerArgs *)args)->client_name);
             Response res;
             res.response_code = RESPONSE_UNAUTHORIZED;
             comm_reqres->res = res;
@@ -178,7 +179,7 @@ void *worker_function(void *args)
         }
         else if (comm_reqres->req.request_type == UNREGISTER)
         {
-            logger("INFO", "[%08x] Initiating deregister of client %s", pthread_self(), ((WorkerArgs *)args)->client_name);
+            logger("INFO", "Initiating deregister of client %s",  ((WorkerArgs *)args)->client_name);
             printf("Deregistering client %s\n", ((WorkerArgs *)args)->client_name);
 
             // TODO: Error handling and logging
@@ -187,23 +188,23 @@ void *worker_function(void *args)
             char *filename = strdup(comm_reqres->filename);
 
             // ? Do you need to clear mutex?.
-            pthread_mutex_destroy(comm_reqres->lock);
+            pthread_mutex_destroy(&comm_reqres->lock);
 
             detach_memory_block(comm_reqres);
             destroy_memory_block(filename);
 
-            logger("DEBUG", "[%08x] Removing file %s as a part of deregistration", pthread_self(), filename);
+            logger("DEBUG", "Removing file %s as a part of deregistration",  filename);
             remove_file(filename);
 
-            logger("INFO", "[%08x] Deregistration of client %s succesful", pthread_self(), ((WorkerArgs *)args)->client_name);
+            logger("INFO", "Deregistration of client %s succesful",  ((WorkerArgs *)args)->client_name);
             break;
         }
 
-        logger("INFO", "[%08x] Thread Total serviced requests: %d", pthread_self(), ++thread_tsr);
-        logger("INFO", "[%08x] Total serviced requests: %d", pthread_self(), increment_service_requests());
+        logger("INFO", "Thread Total serviced requests: %d",  ++thread_tsr);
+        logger("INFO", "Total serviced requests: %d",  increment_service_requests());
         next_stage(comm_reqres);
 
-        logger("INFO", "[%08x] Response sent to client for request with response code %d", pthread_self(), comm_reqres->res.response_code);
+        logger("INFO", "Response sent to client for request with response code %d",  comm_reqres->res.response_code);
         msleep(600);
     }
 
